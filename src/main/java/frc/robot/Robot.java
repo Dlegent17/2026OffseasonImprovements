@@ -7,23 +7,29 @@ package frc.robot;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 
-/**
- * The VM is configured to automatically run this class, and to call the functions corresponding to each mode, as
- * described in the TimedRobot documentation. If you change the name of this class or the package after creating this
- * project, you must also update the build.gradle file in the project.
- */
+// REV Imports
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.spark.SparkBase.PersistMode;
+
 public class Robot extends TimedRobot
 {
-
-  private static Robot   instance;
-  private        Command m_autonomousCommand;
+  private static Robot instance;
+  private Command m_autonomousCommand;
 
   private RobotContainer m_robotContainer;
-
   private Timer disabledTimer;
+
+  // --- VARIABLES FOR MOTOR TEST ---
+  private SparkMax testMotor;
+  private XboxController driverController; 
+  // --------------------------------
 
   public Robot()
   {
@@ -35,19 +41,26 @@ public class Robot extends TimedRobot
     return instance;
   }
 
-  /**
-   * This function is run when the robot is first started up and should be used for any initialization code.
-   */
   @Override
   public void robotInit()
   {
-    // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
-    // autonomous chooser on the dashboard.
     m_robotContainer = new RobotContainer();
-
-    // Create a timer to disable motor brake a few seconds after disable.  This will let the robot stop
-    // immediately when disabled, but then also let it be pushed more 
     disabledTimer = new Timer();
+
+    // --- MOTOR SETUP ---
+    // 1. Initialize the motor on CAN ID 43
+    testMotor = new SparkMax(43, MotorType.kBrushless);
+
+    // 2. Configure Current Limit (Safe for Neo 550)
+    SparkMaxConfig config = new SparkMaxConfig();
+    config.smartCurrentLimit(25);
+    
+    // Apply config (Ignore yellow warnings, they are fine for now)
+    testMotor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // 3. Initialize the Controller on Port 0
+    driverController = new XboxController(0);
+    // -------------------
 
     if (isSimulation())
     {
@@ -55,26 +68,12 @@ public class Robot extends TimedRobot
     }
   }
 
-  /**
-   * This function is called every 20 ms, no matter the mode. Use this for items like diagnostics that you want ran
-   * during disabled, autonomous, teleoperated and test.
-   *
-   * <p>This runs after the mode specific periodic functions, but before LiveWindow and
-   * SmartDashboard integrated updating.
-   */
   @Override
   public void robotPeriodic()
   {
-    // Runs the Scheduler.  This is responsible for polling buttons, adding newly-scheduled
-    // commands, running already-scheduled commands, removing finished or interrupted commands,
-    // and running subsystem periodic() methods.  This must be called from the robot's periodic
-    // block in order for anything in the Command-based framework to work.
     CommandScheduler.getInstance().run();
   }
 
-  /**
-   * This function is called once each time the robot enters Disabled mode.
-   */
   @Override
   public void disabledInit()
   {
@@ -94,40 +93,24 @@ public class Robot extends TimedRobot
     }
   }
 
-  /**
-   * This autonomous runs the autonomous command selected by your {@link RobotContainer} class.
-   */
   @Override
   public void autonomousInit()
   {
     m_robotContainer.setMotorBrake(true);
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
-    //Print the selected autonomous command upon autonomous init
-    System.out.println("Auto selected: " + m_autonomousCommand);
-
-    // schedule the autonomous command selected in the autoChooser
     if (m_autonomousCommand != null)
     {
       m_autonomousCommand.schedule();
     }
   }
 
-  /**
-   * This function is called periodically during autonomous.
-   */
   @Override
-  public void autonomousPeriodic()
-  {
-  }
+  public void autonomousPeriodic() {}
 
   @Override
   public void teleopInit()
   {
-    // This makes sure that the autonomous stops running when
-    // teleop starts running. If you want the autonomous to
-    // continue until interrupted by another command, remove
-    // this line or comment it out.
     if (m_autonomousCommand != null)
     {
       m_autonomousCommand.cancel();
@@ -137,42 +120,33 @@ public class Robot extends TimedRobot
     }
   }
 
-  /**
-   * This function is called periodically during operator control.
-   */
   @Override
   public void teleopPeriodic()
   {
+    // --- BUTTON CONTROL LOGIC ---
+    // Check if the 'X' button is being held down on the main controller
+    if (driverController.getXButton()) {
+      // If held, spin motor at 50% speed
+      testMotor.set(0.5); 
+    } else {
+      // If released, stop the motor
+      testMotor.set(0);
+    }
+    // ----------------------------
   }
 
   @Override
   public void testInit()
   {
-    // Cancels all running commands at the start of test mode.
     CommandScheduler.getInstance().cancelAll();
   }
 
-  /**
-   * This function is called periodically during test mode.
-   */
   @Override
-  public void testPeriodic()
-  {
-  }
+  public void testPeriodic() {}
 
-  /**
-   * This function is called once when the robot is first started up.
-   */
   @Override
-  public void simulationInit()
-  {
-  }
+  public void simulationInit() {}
 
-  /**
-   * This function is called periodically whilst in simulation.
-   */
   @Override
-  public void simulationPeriodic()
-  {
-  }
+  public void simulationPeriodic() {}
 }
