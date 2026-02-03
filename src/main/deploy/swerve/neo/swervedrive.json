@@ -1,9 +1,9 @@
 {
   "imu": {
     "type": "pigeon2",
-    "id": 14,
+    "id": 2,
     "canbus": "rio"
-  },
+  }, 
   "invertedIMU": false,
   "modules": [
     "frontleft.json",

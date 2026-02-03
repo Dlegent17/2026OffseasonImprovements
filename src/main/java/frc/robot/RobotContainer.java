@@ -23,6 +23,9 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import java.io.File;
 import swervelib.SwerveInputStream;
+import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj2.command.Commands;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a "declarative" paradigm, very
@@ -122,6 +125,32 @@ public class RobotContainer
    */
   private void configureBindings()
   {
+     // --- SWERVE MODULE ISOLATION TEST ---
+    // Press and hold button to spin ONLY that specific module forward at 2 m/s.
+    
+    // Front Left (Module 0) -> Button A
+    /* driverXbox.a().whileTrue(Commands.run(() -> {
+        drivebase.getSwerveDrive().getModules()[0].setDesiredState(
+            new SwerveModuleState(2.0, Rotation2d.fromDegrees(0)), true, true);
+    }, drivebase));
+
+    // Front Right (Module 1) -> Button B
+    driverXbox.b().whileTrue(Commands.run(() -> {
+        drivebase.getSwerveDrive().getModules()[1].setDesiredState(
+            new SwerveModuleState(2.0, Rotation2d.fromDegrees(0)), true, true);
+    }, drivebase));
+
+    // Back Left (Module 2) -> Button X
+    driverXbox.x().whileTrue(Commands.run(() -> {
+        drivebase.getSwerveDrive().getModules()[2].setDesiredState(
+            new SwerveModuleState(2.0, Rotation2d.fromDegrees(0)), true, true);
+    }, drivebase));
+
+    // Back Right (Module 3) -> Button Y
+    driverXbox.y().whileTrue(Commands.run(() -> {
+        drivebase.getSwerveDrive().getModules()[3].setDesiredState(
+            new SwerveModuleState(2.0, Rotation2d.fromDegrees(0)), true, true);
+    }, drivebase)); */
     //Command driveFieldOrientedDirectAngle      = drivebase.driveFieldOriented(driveDirectAngle);
     Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
     //Command driveRobotOrientedAngularVelocity  = drivebase.driveFieldOriented(driveRobotOriented);
