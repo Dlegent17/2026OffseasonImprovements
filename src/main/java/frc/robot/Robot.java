@@ -49,17 +49,17 @@ public class Robot extends TimedRobot
 
     // --- MOTOR SETUP ---
     // 1. Initialize the motor on CAN ID 43
-    testMotor = new SparkMax(43, MotorType.kBrushless);
+    //testMotor = new SparkMax(99, MotorType.kBrushless);
 
     // 2. Configure Current Limit (Safe for Neo 550)
-    SparkMaxConfig config = new SparkMaxConfig();
-    config.smartCurrentLimit(25);
+    //SparkMaxConfig config = new SparkMaxConfig();
+    //config.smartCurrentLimit(25);
     
     // Apply config (Ignore yellow warnings, they are fine for now)
-    testMotor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    //testMotor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     // 3. Initialize the Controller on Port 0
-    driverController = new XboxController(0);
+    //driverController = new XboxController(0);
     // -------------------
 
     if (isSimulation())
@@ -125,15 +125,15 @@ public class Robot extends TimedRobot
   {
     // --- BUTTON CONTROL LOGIC ---
     // Check if the 'X' button is being held down on the main controller
-    if (driverController.getXButton()) {
+    //if (driverController.getXButton()) {
       // If held, spin motor at 50% speed
-      testMotor.set(0.5); 
-    } else {
+    //  testMotor.set(0.5); 
+   // } else {
       // If released, stop the motor
-      testMotor.set(0);
+      //testMotor.set(0);
     }
     // ----------------------------
-  }
+  
 
   @Override
   public void testInit()

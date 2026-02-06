@@ -129,7 +129,7 @@ public class RobotContainer
     // Press and hold button to spin ONLY that specific module forward at 2 m/s.
     
     // Front Left (Module 0) -> Button A
-    /* driverXbox.a().whileTrue(Commands.run(() -> {
+    driverXbox.a().whileTrue(Commands.run(() -> {
         drivebase.getSwerveDrive().getModules()[0].setDesiredState(
             new SwerveModuleState(2.0, Rotation2d.fromDegrees(0)), true, true);
     }, drivebase));
@@ -150,7 +150,7 @@ public class RobotContainer
     driverXbox.y().whileTrue(Commands.run(() -> {
         drivebase.getSwerveDrive().getModules()[3].setDesiredState(
             new SwerveModuleState(2.0, Rotation2d.fromDegrees(0)), true, true);
-    }, drivebase)); */
+    }, drivebase)); 
     //Command driveFieldOrientedDirectAngle      = drivebase.driveFieldOriented(driveDirectAngle);
     Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
     //Command driveRobotOrientedAngularVelocity  = drivebase.driveFieldOriented(driveRobotOriented);
