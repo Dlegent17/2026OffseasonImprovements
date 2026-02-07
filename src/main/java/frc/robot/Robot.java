@@ -46,7 +46,6 @@ public class Robot extends TimedRobot
   {
     m_robotContainer = new RobotContainer();
     disabledTimer = new Timer();
-
     // --- MOTOR SETUP ---
     // 1. Initialize the motor on CAN ID 43
     //testMotor = new SparkMax(99, MotorType.kBrushless);
