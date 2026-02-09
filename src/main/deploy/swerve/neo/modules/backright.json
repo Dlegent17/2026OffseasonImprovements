@@ -15,12 +15,12 @@
     "canbus": null
   },
   "inverted": {
-    "drive": false,
-    "angle": false
+    "drive": true,
+    "angle": true
   },
-  "absoluteEncoderOffset": 173.3398,
+  "absoluteEncoderOffset": 0,
   "location": {
-    "front": -10.750,
-    "left": -10.750
+    "front": -11,
+    "left": 11
   }
 }

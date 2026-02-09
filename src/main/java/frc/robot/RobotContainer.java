@@ -125,7 +125,7 @@ public class RobotContainer
    */
   private void configureBindings()
   {
-     // --- SWERVE MODULE ISOLATION TEST ---
+   /*   // --- SWERVE MODULE ISOLATION TEST ---
     // Press and hold button to spin ONLY that specific module forward at 2 m/s.
     
     // Front Left (Module 0) -> Button A
@@ -150,7 +150,7 @@ public class RobotContainer
     driverXbox.y().whileTrue(Commands.run(() -> {
         drivebase.getSwerveDrive().getModules()[3].setDesiredState(
             new SwerveModuleState(2.0, Rotation2d.fromDegrees(0)), true, true);
-    }, drivebase)); 
+    }, drivebase)); /* */
     //Command driveFieldOrientedDirectAngle      = drivebase.driveFieldOriented(driveDirectAngle);
     Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
     //Command driveRobotOrientedAngularVelocity  = drivebase.driveFieldOriented(driveRobotOriented);
@@ -185,11 +185,11 @@ public class RobotContainer
       driverXbox.start().onTrue(Commands.runOnce(() -> drivebase.resetOdometry(new Pose2d(3, 3, new Rotation2d()))));
       driverXbox.button(1).whileTrue(drivebase.sysIdDriveMotorCommand());
       driverXbox.button(2).whileTrue(Commands.runEnd(() -> driveDirectAngleKeyboard.driveToPoseEnabled(true),
-                                                     () -> driveDirectAngleKeyboard.driveToPoseEnabled(false)));
+                                                     () -> driveDirectAngleKeyboard.driveToPoseEnabled(false)));}
 
 
 
-    }
+    } /* 
     if (DriverStation.isTest())
     {
       drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity); // Overrides drive command above!
@@ -208,7 +208,7 @@ public class RobotContainer
       driverXbox.rightBumper().onTrue(Commands.none());
     }
 
-  }
+  } */
 
   /**
    * Use this to pass the autonomous command to the main {@link Robot} class.
