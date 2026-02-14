@@ -4,6 +4,7 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
@@ -17,6 +18,7 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkBase.PersistMode;
+
 
 public class Robot extends TimedRobot
 {
@@ -36,7 +38,7 @@ public class Robot extends TimedRobot
     instance = this;
   }
 
-  public static Robot getInstance()
+  public static Robot getInstance()////
   {
     return instance;
   }
@@ -71,7 +73,17 @@ public class Robot extends TimedRobot
   public void robotPeriodic()
   {
     CommandScheduler.getInstance().run();
-  }
+
+  // FIXED
+  // Note: We use .getDrivebase() now instead of .m_robotDrive
+  double omegaRps = m_robotContainer.getDrivebase().getSwerveDrive().getFieldVelocity().omegaRadiansPerSecond;
+  var llMeasuremnt = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight");
+
+if (llMeasuremnt != null && llMeasuremnt.tagCount > 0 && Math.abs(omegaRps) < 2.0) {
+    m_robotContainer.getDrivebase().resetOdometry(llMeasuremnt.pose);
+}
+    }
+  
 
   @Override
   public void disabledInit()

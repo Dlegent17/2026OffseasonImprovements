@@ -483,4 +483,13 @@ public class SwerveSubsystem extends SubsystemBase
   {
     return swerveDrive;
   }
+  /**
+ * Gets the current turn rate of the robot.
+ * @return Angular velocity in degrees per second.
+ */
+public double getTurnRate()
+{
+    // Access the generic SwerveDrive object to get velocity
+    return Math.toDegrees(getSwerveDrive().getFieldVelocity().omegaRadiansPerSecond);
+}
 }
