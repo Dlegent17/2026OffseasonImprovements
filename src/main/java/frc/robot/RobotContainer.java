@@ -12,6 +12,8 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.OperatorConstants;
+import frc.robot.commands.SnapToTagCommand; // <-- FIX 1: ADDED THIS IMPORT
+import frc.robot.subsystems.Limelight.VisionSwerveSystem;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import java.io.File;
 import swervelib.SwerveInputStream;
@@ -28,10 +30,14 @@ public class RobotContainer
   final CommandXboxController driverXbox = new CommandXboxController(0);
 
   // The robot's subsystems
-  private final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve"));
+  public final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve"));
 
   // Auto Chooser
   private final SendableChooser<Command> autoChooser = new SendableChooser<>();
+
+  // Vision Swerve System 
+  // <-- FIX 2: Changed 'SwerveSubsystem' to 'drivebase'
+  private final VisionSwerveSystem visionSwerveSystem = new VisionSwerveSystem(drivebase.getPoseEstimator());
 
   /**
    * Converts driver input into a field-relative ChassisSpeeds that is controlled by angular velocity.
@@ -88,6 +94,9 @@ public class RobotContainer
 
     // Lock Wheels (X Button) - Useful for defense or staying still
     driverXbox.x().whileTrue(Commands.runOnce(drivebase::lock, drivebase));
+    
+    // Snap To Tag (Y Button)
+    driverXbox.y().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
   }
 
   /**
@@ -95,17 +104,3 @@ public class RobotContainer
    *
    * @return the command to run in autonomous
    */
-  public Command getAutonomousCommand()
-  {
-    return autoChooser.getSelected();
-  }
-
-  public void setMotorBrake(boolean brake)
-  {
-    drivebase.setMotorBrake(brake);
-  }
-  public SwerveSubsystem getDrivebase()
-{
-  return drivebase;
-}
-}

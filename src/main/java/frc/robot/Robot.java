@@ -73,16 +73,44 @@ public class Robot extends TimedRobot
   public void robotPeriodic()
   {
     CommandScheduler.getInstance().run();
+// Get robot's rotational speed
+    double omegaRps = m_robotContainer.getDrivebase().getSwerveDrive().getFieldVelocity().omegaRadiansPerSecond;
 
-  // FIXED
-  // Note: We use .getDrivebase() now instead of .m_robotDrive
-  double omegaRps = m_robotContainer.getDrivebase().getSwerveDrive().getFieldVelocity().omegaRadiansPerSecond;
-  var llMeasuremnt = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight");
+    // Get Limelight data
+    var llMeasurement = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight");
 
-if (llMeasuremnt != null && llMeasuremnt.tagCount > 0 && Math.abs(omegaRps) < 2.0) {
-    m_robotContainer.getDrivebase().resetOdometry(llMeasuremnt.pose);
-}
+    // Initial check: Do we have data, and is the robot stable enough (not spinning wildly)?
+    if (llMeasurement != null && llMeasurement.tagCount > 0 && Math.abs(omegaRps) < 2.0) {
+        
+        // 1. Get the average distance to the tags we currently see
+        double averageTagDistance = llMeasurement.avgTagDist;
+
+        // 2. Determine if we should trust this measurement
+        boolean isTrustworthy = false;
+
+        if (llMeasurement.tagCount >= 2) {
+            // MULTI-TAG: Very accurate. We can trust this from far away.
+            if (averageTagDistance < 4.5) {
+                isTrustworthy = true;
+            }
+        } else if (llMeasurement.tagCount == 1) {
+            // SINGLE-TAG: Prone to noise. Only trust it when we are close.
+            if (averageTagDistance < 2.5) {
+                isTrustworthy = true;
+            }
+        }
+
+        // 3. If the data passes our checks, fuse it into the SwerveDrive!
+        if (isTrustworthy) {
+            m_robotContainer.getDrivebase().addVisionMeasurement(
+                llMeasurement.pose, 
+                llMeasurement.timestampSeconds
+            );
+        }
     }
+  }
+
+
   
 
   @Override
