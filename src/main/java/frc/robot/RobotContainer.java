@@ -36,7 +36,6 @@ public class RobotContainer
   private final SendableChooser<Command> autoChooser = new SendableChooser<>();
 
   // Vision Swerve System 
-  // <-- FIX 2: Changed 'SwerveSubsystem' to 'drivebase'
   private final VisionSwerveSystem visionSwerveSystem = new VisionSwerveSystem(drivebase.getPoseEstimator());
 
   /**
@@ -97,10 +96,26 @@ public class RobotContainer
     
     // Snap To Tag (Y Button)
     driverXbox.y().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
+
   }
 
   /**
    * Use this to pass the autonomous command to the main {@link Robot} class.
-   *
+   
    * @return the command to run in autonomous
    */
+  public Command getAutonomousCommand()
+  {
+    return autoChooser.getSelected();
+  }
+
+  public void setMotorBrake(boolean brake)
+  {
+    drivebase.setMotorBrake(brake);
+  }
+
+  public SwerveSubsystem getDrivebase()
+  {
+    return drivebase;
+  }
+}

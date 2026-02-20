@@ -19,6 +19,8 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Config;
@@ -40,6 +42,9 @@ public class SwerveSubsystem extends SubsystemBase
    */
   private final SwerveDrive swerveDrive;
 
+  private final Field2d field2d = new Field2d();
+
+  
   /**
    * Initialize {@link SwerveDrive} with the directory provided.
    *
@@ -93,6 +98,9 @@ public class SwerveSubsystem extends SubsystemBase
   @Override
   public void periodic()
   {
+    // Adding field map to the smart dashboard
+    field2d.setRobotPose(swerveDrive.getPose());
+    SmartDashboard.putData(field2d);
   }
 
   @Override
@@ -501,4 +509,7 @@ public double getTurnRate()
     // Access the generic SwerveDrive object to get velocity
     return Math.toDegrees(getSwerveDrive().getFieldVelocity().omegaRadiansPerSecond);
 }
+public edu.wpi.first.math.estimator.SwerveDrivePoseEstimator getPoseEstimator() {
+      return swerveDrive.swerveDrivePoseEstimator;
+  }
 }
