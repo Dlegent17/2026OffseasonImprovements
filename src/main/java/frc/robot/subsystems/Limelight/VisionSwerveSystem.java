@@ -1,7 +1,8 @@
 package frc.robot.subsystems.Limelight;
 
 import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator; 
+import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
+import edu.wpi.first.math.geometry.Pose2d;
 // import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -73,5 +74,23 @@ public class VisionSwerveSystem extends SubsystemBase {
 
     public boolean isAligned() {
         return hasTarget() && aimController.atSetpoint();
+    }
+    /**
+     * Fetches a pure vision pose (MegaTag 1) for a hard odometry reset.
+     * We use MegaTag 1 here instead of MegaTag 2 because if the robot is completely lost,
+     * its gyro is probably wrong too, and MegaTag 2 relies on the gyro.
+     * * @return The 2D Pose from vision, or null if no tags are visible.
+     */
+    public Pose2d getForceResetPose() {
+        // Use the standard MegaTag 1 estimate (wpiBlue)
+        LimelightHelpers.PoseEstimate mt1Pose = LimelightHelpers.getBotPoseEstimate_wpiBlue(llName);
+        
+        // Only return it if we actually see a tag
+        if (mt1Pose.tagCount > 0) {
+            return mt1Pose.pose;
+        }
+        
+        // Return null if we are blind
+        return null;
     }
 }

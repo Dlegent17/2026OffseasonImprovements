@@ -4,6 +4,7 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
@@ -88,15 +89,40 @@ public class RobotContainer
 
     // --- DRIVER BUTTONS ---
     
-    // Zero Gyro (Start Button)
-    driverXbox.b().onTrue(Commands.runOnce(drivebase::zeroGyro));
+   // Smart Zero Gyro (B Button)
+driverXbox.b().onTrue(Commands.runOnce(() -> {
+    // Check if we are on the Red Alliance
+    if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == DriverStation.Alliance.Red) {
+        // If on Red, facing away from the driver is 180 degrees
+        drivebase.resetOdometry(new edu.wpi.first.math.geometry.Pose2d(
+            drivebase.getPose().getTranslation(), 
+            edu.wpi.first.math.geometry.Rotation2d.fromDegrees(180)
+        ));
+    } else {
+        // If on Blue, facing away from the driver is 0 degrees
+        drivebase.resetOdometry(new edu.wpi.first.math.geometry.Pose2d(
+            drivebase.getPose().getTranslation(), 
+            edu.wpi.first.math.geometry.Rotation2d.fromDegrees(0)
+        ));
+    }
+}));
 
     // Lock Wheels (X Button) - Useful for defense or staying still
     driverXbox.x().whileTrue(Commands.runOnce(drivebase::lock, drivebase));
     
     // Snap To Tag (Y Button)
     driverXbox.y().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
-
+    // --- OVERRIDE BUTTON ---
+    // Force Pose Reset (A Button)
+    driverXbox.a().onTrue(Commands.runOnce(() -> {
+      // 1. Ask the vision system for a hard-reset pose
+      Pose2d visionPose = visionSwerveSystem.getForceResetPose();
+      
+      // 2. If it actually saw a tag, force the drivetrain to jump to those coordinates
+      if (visionPose != null) {
+          drivebase.resetOdometry(visionPose);
+      }
+    }));
   }
 
   /**
