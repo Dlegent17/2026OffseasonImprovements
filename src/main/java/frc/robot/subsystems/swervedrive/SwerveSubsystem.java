@@ -11,6 +11,9 @@ import java.util.Arrays;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.config.PIDConstants;
+
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -34,6 +37,8 @@ import swervelib.parser.SwerveDriveConfiguration;
 import swervelib.parser.SwerveParser;
 import swervelib.telemetry.SwerveDriveTelemetry;
 import swervelib.telemetry.SwerveDriveTelemetry.TelemetryVerbosity;
+import com.pathplanner.lib.config.RobotConfig;         // New for modern PP
+import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 public class SwerveSubsystem extends SubsystemBase
 {
@@ -512,4 +517,31 @@ public double getTurnRate()
 public edu.wpi.first.math.estimator.SwerveDrivePoseEstimator getPoseEstimator() {
       return swerveDrive.swerveDrivePoseEstimator;
   }
+ public void setupPathPlanner() {
+    RobotConfig config;
+    try {
+      // This loads your robot's mass, MOI, and gear ratios from your project
+      config = RobotConfig.fromGUISettings();
+    } catch (Exception e) {
+      e.printStackTrace();
+      return;
+    }
+
+    AutoBuilder.configure(
+        this::getPose, 
+        this::resetOdometry, 
+        this::getRobotVelocity, 
+        this::setChassisSpeeds, 
+        new PPHolonomicDriveController(
+            new PIDConstants(5.0, 0.0, 0.0), // Translation PID
+            new PIDConstants(5.0, 0.0, 0.0)  // Rotation PID
+        ),
+        config,
+        () -> {
+            var alliance = DriverStation.getAlliance();
+            return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
+        },
+        this
+    );
+}
 }

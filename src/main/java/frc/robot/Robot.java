@@ -132,32 +132,56 @@ public class Robot extends TimedRobot
     }
   }
 
-  @Override
+@Override
   public void autonomousInit()
   {
     m_robotContainer.setMotorBrake(true);
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
-    if (m_autonomousCommand != null)
-    {
-      m_autonomousCommand.schedule();
+    // --- ALLIANCE SMART LIMELIGHT (AUTO) ---
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
+        LimelightHelpers.setPipelineIndex("limelight", 0); 
+        
+        // Direct NetworkTable Override (Bypasses old LimelightHelpers)
+        double[] redHubIDs = {2.0, 3.0, 4.0, 5.0, 8.0, 9.0, 10.0, 11.0}; 
+        edu.wpi.first.networktables.NetworkTableInstance.getDefault().getTable("limelight").getEntry("fiducial_id_filters_set").setDoubleArray(redHubIDs);
+    } else {
+        LimelightHelpers.setPipelineIndex("limelight", 1); 
+        
+        double[] blueHubIDs = {18.0, 19.0, 20.0, 21.0, 24.0, 25.0, 26.0, 27.0};
+        edu.wpi.first.networktables.NetworkTableInstance.getDefault().getTable("limelight").getEntry("fiducial_id_filters_set").setDoubleArray(blueHubIDs);
     }
-  }
 
-  @Override
-  public void autonomousPeriodic() {}
+    if (m_autonomousCommand != null) { m_autonomousCommand.schedule(); }
+  }
 
   @Override
   public void teleopInit()
   {
-    if (m_autonomousCommand != null)
-    {
-      m_autonomousCommand.cancel();
-    } else
-    {
-      CommandScheduler.getInstance().cancelAll();
+    if (m_autonomousCommand != null) { m_autonomousCommand.cancel(); } 
+    else { CommandScheduler.getInstance().cancelAll(); }
+
+    // --- ALLIANCE SMART LIMELIGHT (TELEOP) ---
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
+        LimelightHelpers.setPipelineIndex("limelight", 0); 
+        
+        double[] redHubIDs = {2.0, 3.0, 4.0, 5.0, 8.0, 9.0, 10.0, 11.0}; 
+        edu.wpi.first.networktables.NetworkTableInstance.getDefault().getTable("limelight").getEntry("fiducial_id_filters_set").setDoubleArray(redHubIDs);
+    } else {
+        LimelightHelpers.setPipelineIndex("limelight", 1); 
+        
+        double[] blueHubIDs = {18.0, 19.0, 20.0, 21.0, 24.0, 25.0, 26.0, 27.0};
+        edu.wpi.first.networktables.NetworkTableInstance.getDefault().getTable("limelight").getEntry("fiducial_id_filters_set").setDoubleArray(blueHubIDs);
     }
   }
+  
+
+  @Override
+  public void autonomousPeriodic() {}
+
+
 
   @Override
   public void teleopPeriodic()
