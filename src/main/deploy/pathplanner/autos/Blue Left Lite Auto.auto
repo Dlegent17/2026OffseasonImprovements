@@ -1,0 +1,25 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Blue Left Lite Path"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Shoot10Balls"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "Blue Alliance Autos",
+  "choreoAuto": false
+}

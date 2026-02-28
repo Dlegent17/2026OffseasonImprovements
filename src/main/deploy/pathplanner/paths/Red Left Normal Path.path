@@ -1,0 +1,125 @@
+{
+  "version": "2025.0",
+  "waypoints": [
+    {
+      "anchor": {
+        "x": 13.264322396576317,
+        "y": 0.6903566333808839
+      },
+      "prevControl": null,
+      "nextControl": {
+        "x": 9.330970042796006,
+        "y": 0.5480313837375188
+      },
+      "isLocked": false,
+      "linkedName": null
+    },
+    {
+      "anchor": {
+        "x": 8.062981455064195,
+        "y": 2.126547788873039
+      },
+      "prevControl": {
+        "x": 6.95025677603424,
+        "y": 0.845620542082739
+      },
+      "nextControl": {
+        "x": 9.217247497933716,
+        "y": 3.4552959079902816
+      },
+      "isLocked": false,
+      "linkedName": null
+    },
+    {
+      "anchor": {
+        "x": 10.935363766048503,
+        "y": 0.6903566333808839
+      },
+      "prevControl": {
+        "x": 9.56817891645785,
+        "y": 0.7153052620230494
+      },
+      "nextControl": {
+        "x": 14.48055634807418,
+        "y": 0.6256633380884444
+      },
+      "isLocked": false,
+      "linkedName": null
+    },
+    {
+      "anchor": {
+        "x": 14.506433666191159,
+        "y": 0.9491298145506415
+      },
+      "prevControl": {
+        "x": 14.239851106251752,
+        "y": 0.9562386828156918
+      },
+      "nextControl": {
+        "x": 15.47683309557775,
+        "y": 0.9232524964336677
+      },
+      "isLocked": false,
+      "linkedName": null
+    },
+    {
+      "anchor": {
+        "x": 13.406647646219687,
+        "y": 4.132039942938659
+      },
+      "prevControl": {
+        "x": 14.80402282453638,
+        "y": 3.8473894436519256
+      },
+      "nextControl": null,
+      "isLocked": false,
+      "linkedName": null
+    }
+  ],
+  "rotationTargets": [],
+  "constraintZones": [],
+  "pointTowardsZones": [],
+  "eventMarkers": [
+    {
+      "name": "DeployAndIntake",
+      "waypointRelativePos": 0.85,
+      "endWaypointRelativePos": null,
+      "command": {
+        "type": "named",
+        "data": {
+          "name": "DeployAndIntake"
+        }
+      }
+    },
+    {
+      "name": "StopIntake",
+      "waypointRelativePos": 1.4033696729435152,
+      "endWaypointRelativePos": null,
+      "command": {
+        "type": "named",
+        "data": {
+          "name": "StopIntake"
+        }
+      }
+    }
+  ],
+  "globalConstraints": {
+    "maxVelocity": 3.0,
+    "maxAcceleration": 3.0,
+    "maxAngularVelocity": 540.0,
+    "maxAngularAcceleration": 720.0,
+    "nominalVoltage": 12.0,
+    "unlimited": false
+  },
+  "goalEndState": {
+    "velocity": 0,
+    "rotation": 180.0
+  },
+  "reversed": false,
+  "folder": "Red Alliance Paths",
+  "idealStartingState": {
+    "velocity": 0,
+    "rotation": 180.0
+  },
+  "useDefaultConstraints": true
+}

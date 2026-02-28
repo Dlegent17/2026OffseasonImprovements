@@ -1,0 +1,25 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Red Right Normal Path"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Shoot20Balls"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "Red Alliance Autos",
+  "choreoAuto": false
+}
