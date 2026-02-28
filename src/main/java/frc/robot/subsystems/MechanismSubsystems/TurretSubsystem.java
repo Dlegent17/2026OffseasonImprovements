@@ -1,4 +1,4 @@
-package frc.robot.subsystems;
+package frc.robot.subsystems.MechanismSubsystems;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -16,17 +16,17 @@ public class TurretSubsystem extends SubsystemBase {
 
     @SuppressWarnings("removal")
     public TurretSubsystem() {
-        turretMotor = new SparkMax(23, MotorType.kBrushless);
+        turretMotor = new SparkMax(24, MotorType.kBrushless);
 
         SparkMaxConfig turretConfig = new SparkMaxConfig();
         turretConfig.smartCurrentLimit(30); 
         turretConfig.idleMode(IdleMode.kBrake); 
         
         turretConfig.softLimit.forwardSoftLimitEnabled(true);
-        turretConfig.softLimit.forwardSoftLimit(40.0); 
+        turretConfig.softLimit.forwardSoftLimit(11.5); 
 
         turretConfig.softLimit.reverseSoftLimitEnabled(true);
-        turretConfig.softLimit.reverseSoftLimit(-40.0); 
+        turretConfig.softLimit.reverseSoftLimit(-11.5); 
 
         turretMotor.configure(turretConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     }
@@ -36,10 +36,10 @@ public class TurretSubsystem extends SubsystemBase {
     }
 
     public Command turnRightCommand() {
-        return this.runEnd(() -> setTurretSpeed(0.25), () -> setTurretSpeed(0.0));
+        return this.runEnd(() -> setTurretSpeed(0.75), () -> setTurretSpeed(0.0));
     }
 
     public Command turnLeftCommand() {
-        return this.runEnd(() -> setTurretSpeed(-0.25), () -> setTurretSpeed(0.0));
+        return this.runEnd(() -> setTurretSpeed(-0.75), () -> setTurretSpeed(0.0));
     }
 }

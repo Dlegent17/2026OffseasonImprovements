@@ -15,17 +15,17 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.AutoAimTurretCommand;
 import frc.robot.commands.SnapToTagCommand; // <-- FIX 1: ADDED THIS IMPORT
-import frc.robot.subsystems.Limelight.VisionSwerveSystem;
-import frc.robot.subsystems.swervedrive.SwerveSubsystem;
+import frc.robot.subsystems.SwerveSubsystems.VisionSwerveSystem;
+import frc.robot.subsystems.SwerveSubsystems.SwerveSubsystem;
 import java.io.File;
 import swervelib.SwerveInputStream;
-import frc.robot.subsystems.IntakeSubsystem;
-import frc.robot.subsystems.ShooterSubsystem;
-import frc.robot.subsystems.TurretSubsystem;
+import frc.robot.subsystems.MechanismSubsystems.IntakeSubsystem;
+import frc.robot.subsystems.MechanismSubsystems.ShooterSubsystem;
+import frc.robot.subsystems.MechanismSubsystems.TurretSubsystem;
+import frc.robot.subsystems.MechanismSubsystems.IndexerSubsystem;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
-
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a "declarative" paradigm, very
@@ -40,7 +40,6 @@ public class RobotContainer
   // The driver's controller
   final CommandXboxController driverXbox = new CommandXboxController(0);
 
-
 // Just declare it, don't initialize it yet!
 private final SendableChooser<Command> autoChooser;
 
@@ -48,13 +47,14 @@ private final SendableChooser<Command> autoChooser;
   public final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve"));
 
   //
- 
   // Vision Swerve System 
   private final VisionSwerveSystem visionSwerveSystem = new VisionSwerveSystem(drivebase.getPoseEstimator());
 
   // Intake Subsystem
   public final IntakeSubsystem intake = new IntakeSubsystem();
 
+  // --- NEW: Declared the Indexer Subsystem ---
+  public final IndexerSubsystem indexer = new IndexerSubsystem();
   
 
   /**
@@ -81,6 +81,32 @@ private final SendableChooser<Command> autoChooser;
    */
   public RobotContainer()
   {
+    // --- NEW: Setup PathPlanner FIRST so AutoBuilder doesn't crash ---
+    drivebase.setupPathPlanner();
+
+    // --- NEW: Moved NamedCommands above AutoBuilder so PathPlanner knows your commands ---
+    // Intake Commands
+    NamedCommands.registerCommand("DeployAndIntake", intake.intakeInCommand());
+    NamedCommands.registerCommand("StopIntake", Commands.runOnce(() -> intake.stopRollers()));
+// Runs the indexer for exactly 0.5 seconds to push the ball into the flywheels
+NamedCommands.registerCommand("FeedIndexer", indexer.feedToShooterCommand().withTimeout(0.5));
+    // Shooter & Turret Commands
+    NamedCommands.registerCommand("SpinUpShooter", Commands.runOnce(() -> shooter.toggleShooter()));
+    NamedCommands.registerCommand("StopShooter", Commands.runOnce(() -> shooter.toggleShooter())); // Assuming it toggles off
+    NamedCommands.registerCommand("AutoAim", new AutoAimTurretCommand(turret).withTimeout(1.5));
+
+    // You can even register the whole sequence we built earlier as a single block!
+NamedCommands.registerCommand("AimAndFireSequence", Commands.sequence(
+    // 1. Aim the turret and rev the flywheels (using the Limelight distance)
+    new AutoAimTurretCommand(turret).withTimeout(1.5),
+    
+    // 2. FIRE! (Push the ball into the flywheels)
+    indexer.feedToShooterCommand().withTimeout(0.5),
+
+    // 3. Turn the shooter off to save battery
+    Commands.runOnce(() -> shooter.stopShooter())
+));
+
     // --- INSIDE THE CONSTRUCTOR ---
     
     // This MUST be the only time autoChooser is assigned a value!
@@ -99,34 +125,19 @@ private final SendableChooser<Command> autoChooser;
     autoChooser.addOption("Drive Forward", drivebase.driveForward().withTimeout(1));
     
     // Setup the Aim and Shoot routine
+    // --- NEW: Updated the Auto routine to use the Indexer and explicit on/off states ---
     Command autoShootRoutine = Commands.sequence(
-        Commands.runOnce(() -> shooter.toggleShooter()),
+        Commands.runOnce(() -> shooter.setDynamicShooter(2.0)),
         new AutoAimTurretCommand(turret).withTimeout(1.5),
-        shooter.shootOneBallCommand(),
-        Commands.runOnce(() -> shooter.toggleShooter())
+        indexer.feedToShooterCommand().withTimeout(0.5),
+        Commands.runOnce(() -> shooter.stopShooter())
     );
 
     // Add it to your autonomous chooser
     autoChooser.addOption("Aim and Shoot", autoShootRoutine);
     
     // Send the chooser to the dashboard ONCE at the very end!
-    SmartDashboard.putData("Auto Choices", autoChooser);
-    // Intake Commands
-    NamedCommands.registerCommand("DeployAndIntake", intake.intakeInCommand());
-    NamedCommands.registerCommand("StopIntake", Commands.runOnce(() -> intake.stopRollers()));
-
-    // Shooter & Turret Commands
-    NamedCommands.registerCommand("SpinUpShooter", Commands.runOnce(() -> shooter.toggleShooter()));
-    NamedCommands.registerCommand("StopShooter", Commands.runOnce(() -> shooter.toggleShooter())); // Assuming it toggles off
-    NamedCommands.registerCommand("AutoAim", new AutoAimTurretCommand(turret).withTimeout(1.5));
-    NamedCommands.registerCommand("FireBall", shooter.shootOneBallCommand());
-
-    // You can even register the whole sequence we built earlier as a single block!
-    NamedCommands.registerCommand("AimAndFireSequence", Commands.sequence(
-        new AutoAimTurretCommand(turret).withTimeout(1.5),
-        shooter.shootOneBallCommand()
-    ));
-    SmartDashboard.putData("Auto Choices", autoChooser);
+    // SmartDashboard.putData("Auto Choices", autoChooser); // --- NEW: Commented out to prevent duplicate dashboard errors ---
   }
 
   /**
@@ -162,15 +173,23 @@ private final SendableChooser<Command> autoChooser;
     
     // Snap To Tag (Y Button)
     driverXbox.b().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
+
+    // --- NEW: Indexer Unjam (A Button) ---
+    driverXbox.a().whileTrue(indexer.reverseIndexerCommand());
+
+
     // --- SHOOTER BINDINGS ---
     
     // Right Trigger: Toggle the flywheels On and Off
     // The '0.5' means it activates when you pull the trigger halfway down
-    driverXbox.rightTrigger(0.5).onTrue(shooter.toggleShooterCommand());
-
-    // B Button: Feed exactly one ball into the shooter
-    driverXbox.b().onTrue(shooter.shootOneBallCommand());
-
+    // --- NEW: Updated to trigger the safe auto-shoot routine! ---
+    Command triggerShootRoutine = Commands.sequence(
+        Commands.runOnce(() -> shooter.setDynamicShooter(2.0)), 
+        new AutoAimTurretCommand(turret).withTimeout(1.5),
+        indexer.feedToShooterCommand().withTimeout(0.5),
+        Commands.runOnce(() -> shooter.stopShooter())
+    );
+    driverXbox.rightTrigger(0.5).onTrue(triggerShootRoutine);
 
     // --- TURRET BINDINGS ---
     
@@ -200,7 +219,6 @@ private final SendableChooser<Command> autoChooser;
 
   /**
    * Use this to pass the autonomous command to the main {@link Robot} class.
-   
    * @return the command to run in autonomous
    */
   public Command getAutonomousCommand()

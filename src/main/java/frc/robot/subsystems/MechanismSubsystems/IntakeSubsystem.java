@@ -1,4 +1,4 @@
-package frc.robot.subsystems;
+package frc.robot.subsystems.MechanismSubsystems;
 
 import edu.wpi.first.wpilibj.DutyCycleEncoder;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -37,7 +37,7 @@ public class IntakeSubsystem extends SubsystemBase {
         // Initialize Encoder on roboRIO DIO Port 0
         pivotEncoder = new DutyCycleEncoder(0);
 
-        // --- CONFIGURE ROLLER MOTORS ---
+        // 
         SparkMaxConfig rollerConfig = new SparkMaxConfig();
         rollerConfig.smartCurrentLimit(30);
         rollerConfig.idleMode(IdleMode.kCoast);
@@ -49,7 +49,7 @@ public class IntakeSubsystem extends SubsystemBase {
         backBeltConfig.inverted(true);
         backBeltMotor.configure(backBeltConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-        // --- CONFIGURE PIVOT MOTOR ---
+        // Configure Pivot Motor with Brake Mode and Current Limit
         SparkMaxConfig pivotConfig = new SparkMaxConfig();
         pivotConfig.smartCurrentLimit(40);
         pivotConfig.idleMode(IdleMode.kBrake); 
@@ -64,10 +64,7 @@ public class IntakeSubsystem extends SubsystemBase {
         SmartDashboard.putNumber("Intake Pivot Angle", getPivotAngle());
     }
 
-    // ==========================================================
     // ENCODER LOGIC
-    // ==========================================================
-
     /**
      * Reads the absolute encoder and converts it to degrees.
      * DutyCycleEncoders return 0.0 to 1.0 by default, so we multiply by 360.

@@ -2,8 +2,8 @@ package frc.robot.commands;
 
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.Limelight.VisionSwerveSystem;
-import frc.robot.subsystems.swervedrive.SwerveSubsystem;
+import frc.robot.subsystems.SwerveSubsystems.VisionSwerveSystem;
+import frc.robot.subsystems.SwerveSubsystems.SwerveSubsystem;
 
 public class SnapToTagCommand extends Command {
     private final SwerveSubsystem drivebase;

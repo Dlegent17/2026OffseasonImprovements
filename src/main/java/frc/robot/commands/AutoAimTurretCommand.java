@@ -3,7 +3,7 @@ package frc.robot.commands;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.LimelightHelpers;
-import frc.robot.subsystems.TurretSubsystem;
+import frc.robot.subsystems.MechanismSubsystems.TurretSubsystem;
 
 public class AutoAimTurretCommand extends Command {
     private final TurretSubsystem turret;
