@@ -15,17 +15,17 @@ import com.revrobotics.spark.SparkBase.ResetMode;
 
 public class ShooterSubsystem extends SubsystemBase {
     
-    // --- MOT
+    // Defining Motors
     private final SparkMax topFlywheel = new SparkMax(30, MotorType.kBrushless);
     private final SparkMax bottomFlywheel = new SparkMax(31, MotorType.kBrushless);
     private final SparkMax hoodMotor = new SparkMax(32, MotorType.kBrushless); 
 
-    // --- HOOD SENSOR & CONTROL ---
+    // Defining Hood sensor and control
     // Assuming the absolute encoder is plugged into DIO Port 0 on the RoboRIO
     private final DutyCycleEncoder hoodAbsoluteEncoder = new DutyCycleEncoder(0);
     private final PIDController hoodPID = new PIDController(2.5, 0.0, 0.0);
 
-    // --- SAFETY LIMITS (TUNE THESE!) ---
+    // Making Safety Limits (tune later)
     // These represent the physical min and max rotations of your encoder
     private final double HOOD_MIN_ANGLE = 0.10; // Bottom hard stop
     private final double HOOD_MAX_ANGLE = 0.45; // Top hard stop
@@ -33,31 +33,33 @@ public class ShooterSubsystem extends SubsystemBase {
     // The Interpolating Map - Tells the motors how hard to shoot depending on the position relative to April Tag
     private final InterpolatingDoubleTreeMap powerMap = new InterpolatingDoubleTreeMap();
     private final InterpolatingDoubleTreeMap hoodMap = new InterpolatingDoubleTreeMap();
+    
 @SuppressWarnings("removal")
+    
     public ShooterSubsystem() {
 
-        // --- NEW REVLIB MOTOR CONFIGURATION ---
+        // REV Lib motor configurations
         // Make the hood motor brake so it doesn't fall down when disabled
         SparkMaxConfig hoodConfig = new SparkMaxConfig();
         hoodConfig.idleMode(IdleMode.kBrake);
         hoodMotor.configure(hoodConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
         
-        // 1. FLYWHEEL POWER (Percentage 0.0 to 1.0)
+        // 1. Flywheel Power (Percentage 0.0 to 1.0)
         powerMap.put(1.5, 0.40); 
         powerMap.put(3.0, 0.65); 
         powerMap.put(5.0, 0.90); 
 
-        // 2. HOOD ANGLE (Absolute Encoder Position)
+        // 2. Hood Angle (Absolute Encoder Position)
         hoodMap.put(1.5, 0.12);  // Close shot: Hood mostly down
         hoodMap.put(3.0, 0.25);  // Mid shot: Hood half up
         hoodMap.put(5.0, 0.40);  // Far shot: Hood fully raised
     }
 
-    /**
-     * Looks at the distance, checks the maps, and automatically adjusts the flywheels and hood!
-     */
+    
+     // Looks at the distance, checks the maps, and automatically adjusts the flywheels and hood
+    
     public void setDynamicShooter(double distanceToHubMeters) {
-        // 1. Get the magic numbers from the maps
+        // 1. Get the numbers from the maps
         double targetPower = powerMap.get(distanceToHubMeters);
         double targetHoodPosition = hoodMap.get(distanceToHubMeters);
 
