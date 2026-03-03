@@ -7,13 +7,25 @@
         {
           "type": "path",
           "data": {
-            "pathName": "Blue Left Lite Path"
+            "pathName": "Blue Right Human 1 Path"
+          }
+        },
+        {
+          "type": "wait",
+          "data": {
+            "waitTime": 5.0
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Blue Right Human 2 Path"
           }
         },
         {
           "type": "named",
           "data": {
-            "name": "Shoot10Balls"
+            "name": "Shoot20Balls"
           }
         }
       ]
