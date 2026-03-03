@@ -88,7 +88,7 @@ public class RobotContainer {
     // --- NEW: Register the Multi-Shot Commands for Auto! ---
     NamedCommands.registerCommand("Shoot10Balls", shootMultipleBalls(10));
     NamedCommands.registerCommand("Shoot20Balls", shootMultipleBalls(20));
-     NamedCommands.registerCommand("Shoot30Balls", shootMultipleBalls(30));
+    NamedCommands.registerCommand("Shoot30Balls", shootMultipleBalls(30));
 
         // 3. Build the Auto Chooser
         autoChooser = AutoBuilder.buildAutoChooser();
