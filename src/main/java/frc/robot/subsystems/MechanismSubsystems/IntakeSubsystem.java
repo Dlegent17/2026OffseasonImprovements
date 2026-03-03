@@ -59,12 +59,13 @@ public class IntakeSubsystem extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // This runs constantly. It puts exact intake angle on the dashboard 
+        // This runs constantly. It puts your exact intake angle on the dashboard 
         // so you can easily read it and find your real limits later!
         SmartDashboard.putNumber("Intake Pivot Angle", getPivotAngle());
     }
 
-    // Encoder Logic
+    // ENCODER LOGIC
+    /**
      * Reads the absolute encoder and converts it to degrees.
      * DutyCycleEncoders return 0.0 to 1.0 by default, so we multiply by 360.
      */
@@ -73,8 +74,10 @@ public class IntakeSubsystem extends SubsystemBase {
         return pivotEncoder.get() * 360.0;
     }
 
-    //
-    // Roller Controller
+    // ==========================================================
+    // ROLLER CONTROL
+    // ==========================================================
+
     public void setRollerSpeed(double speed) {
         frontRollerMotor.set(speed);
         backBeltMotor.set(speed);
@@ -92,11 +95,18 @@ public class IntakeSubsystem extends SubsystemBase {
     public Command intakeOutCommand() {
         return this.runEnd(() -> setRollerSpeed(-0.6), this::stopRollers);
     }
-    // Command so the intake goes to the flow and spins when a button is pressed
+    // ==========================================================
+    // SMART AUTOMATED COMMANDS
+    // ==========================================================
+
+    /**
+     * Drops the intake to the floor and spins the rollers.
+     * The soft limits in setPivotSpeed() will automatically stop the arm when it hits the floor!
+     */
     public Command deployAndIntakeCommand() {
         return this.run(() -> {
-            setPivotSpeed(-0.4); // Drive Down (Negative)
-            setRollerSpeed(0.8); // Spin In
+            setPivotSpeed(-0.4); // Drive DOWN (Negative)
+            setRollerSpeed(0.8); // Spin IN
         });
     }
 
@@ -111,7 +121,9 @@ public class IntakeSubsystem extends SubsystemBase {
         }).until(() -> getPivotAngle() <= MAX_ANGLE_UP); // Stop the command when fully stowed!
     }
 
-// Pivot Controls with limits to how far the intake can go up and down
+    // ==========================================================
+    // PIVOT CONTROL (WITH SOFT LIMITS)
+    // ==========================================================
 
     /**
      * Safely drives the pivot up or down, respecting the encoder limits.
