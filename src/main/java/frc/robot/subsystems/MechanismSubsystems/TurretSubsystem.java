@@ -72,4 +72,10 @@ public class TurretSubsystem extends SubsystemBase {
     public Command turnLeftCommand() {
         return this.runEnd(() -> setTurretSpeed(-0.75), () -> setTurretSpeed(0.0));
     }
+    /**
+     * Reads the current angle of the turret in degrees.
+     */
+    public double getTurretAngleDegrees() {
+        return turretMotor.getEncoder().getPosition(); 
+    }
 }

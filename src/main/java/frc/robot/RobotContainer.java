@@ -6,6 +6,9 @@ package frc.robot;
 
 import java.io.File;
 
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
+
 // WPILib Imports
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -16,35 +19,31 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-
-// Subsystems
-import frc.robot.subsystems.SwerveSubsystems.SwerveSubsystem;
-import frc.robot.subsystems.SwerveSubsystems.VisionSwerveSystem;
-import frc.robot.subsystems.MechanismSubsystems.IntakeSubsystem;
-import frc.robot.subsystems.MechanismSubsystems.ShooterSubsystem;
-import frc.robot.subsystems.MechanismSubsystems.TurretSubsystem;
-import frc.robot.subsystems.MechanismSubsystems.IndexerSubsystem;
-
 // Commands & Constants
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.AutoAimTurretCommand;
-import frc.robot.commands.SnapToTagCommand; 
-
+import frc.robot.commands.SnapToTagCommand;
+import frc.robot.subsystems.MechanismSubsystems.IndexerSubsystem;
+import frc.robot.subsystems.MechanismSubsystems.IntakeSubsystem;
+import frc.robot.subsystems.MechanismSubsystems.ShooterSubsystem;
+import frc.robot.subsystems.MechanismSubsystems.TurretSubsystem;
+// Subsystems
+import frc.robot.subsystems.SwerveSubsystems.SwerveSubsystem;
+import frc.robot.subsystems.SwerveSubsystems.VisionSwerveSystem;
 // Third-Party Libraries
 import swervelib.SwerveInputStream;
-import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.auto.NamedCommands;
 
 public class RobotContainer {
 
     // --- Subsystems ---
     public final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve"));
-    private final VisionSwerveSystem visionSwerveSystem = new VisionSwerveSystem(drivebase.getPoseEstimator());
-    
+// Pass the turret into the vision system!
     public final ShooterSubsystem shooter = new ShooterSubsystem();
     public final TurretSubsystem turret = new TurretSubsystem();
     public final IntakeSubsystem intake = new IntakeSubsystem();
     public final IndexerSubsystem indexer = new IndexerSubsystem();
+    private final VisionSwerveSystem visionSwerveSystem = new VisionSwerveSystem(drivebase.getPoseEstimator(), turret);    
+
 
     // --- Controllers & Choosers ---
     final CommandXboxController driverXbox = new CommandXboxController(0);
@@ -151,14 +150,17 @@ public class RobotContainer {
         driverXbox.leftTrigger()
             .whileTrue(intake.deployAndIntakeCommand())
             .onFalse(intake.stowIntakeCommand());
-
         // X Button: Force Pose Reset to Vision coordinates
         driverXbox.x().onTrue(Commands.runOnce(() -> {
             Pose2d visionPose = visionSwerveSystem.getForceResetPose();
             if (visionPose != null) {
                 drivebase.resetOdometry(visionPose);
             }
-        }));
+        })); // close the runOnce lambda and onTrue call
+
+        // --- TESTING BINDINGS ---
+        // D-Pad Up: Simple toggle to test the shooter flywheels at 50% speed
+        driverXbox.povUp().onTrue(Commands.runOnce(() -> shooter.toggleShooter(), shooter));
     }
 
     // --- Helper Methods ---

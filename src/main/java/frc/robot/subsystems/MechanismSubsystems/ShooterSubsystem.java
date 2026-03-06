@@ -16,9 +16,9 @@ import com.revrobotics.spark.SparkBase.ResetMode;
 public class ShooterSubsystem extends SubsystemBase {
     
     // Defining Motors
-    private final SparkMax topFlywheel = new SparkMax(30, MotorType.kBrushless);
-    private final SparkMax bottomFlywheel = new SparkMax(31, MotorType.kBrushless);
-    private final SparkMax hoodMotor = new SparkMax(32, MotorType.kBrushless); 
+    private final SparkMax rightFlywheel = new SparkMax(18, MotorType.kBrushless);
+    private final SparkMax leftFlywheel = new SparkMax(19, MotorType.kBrushless);
+    private final SparkMax hoodMotor = new SparkMax(20, MotorType.kBrushless); 
 
     // Defining Hood sensor and control
     // Assuming the absolute encoder is plugged into DIO Port 0 on the RoboRIO
@@ -67,8 +67,8 @@ public class ShooterSubsystem extends SubsystemBase {
         targetHoodPosition = MathUtil.clamp(targetHoodPosition, HOOD_MIN_ANGLE, HOOD_MAX_ANGLE);
 
         // 3. Apply Power to Flywheels
-        topFlywheel.set(targetPower);
-        bottomFlywheel.set(targetPower);
+        rightFlywheel.set(targetPower);
+        leftFlywheel.set(targetPower);
 
         // 4. Calculate PID for the Hood and apply motor power (Using .get() instead of .getAbsolutePosition())
         double currentHoodPosition = hoodAbsoluteEncoder.get();
@@ -81,13 +81,13 @@ public class ShooterSubsystem extends SubsystemBase {
 
     /** Simple toggle for testing flywheels manually */
     public void toggleShooter() {
-        if (topFlywheel.get() > 0.1) { stopShooter(); } 
-        else { topFlywheel.set(0.5); bottomFlywheel.set(0.5); }
+        if (rightFlywheel.get() > 0.1) { stopShooter(); } 
+        else { rightFlywheel.set(0.5); leftFlywheel.set(-0.5); }
     }
 
     public void stopShooter() {
-        topFlywheel.set(0);
-        bottomFlywheel.set(0);
+        rightFlywheel.set(0);
+        leftFlywheel.set(0);
         hoodMotor.set(0); // PID stops running, brake mode holds it in place
     }
 

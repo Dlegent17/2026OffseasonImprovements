@@ -9,7 +9,7 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 
 public class IndexerSubsystem extends SubsystemBase {
     
-    private final SparkMax indexerMotor = new SparkMax(40, MotorType.kBrushless);
+    private final SparkMax indexerMotor = new SparkMax(25, MotorType.kBrushless);
 
     @SuppressWarnings("removal")
     public IndexerSubsystem() {
