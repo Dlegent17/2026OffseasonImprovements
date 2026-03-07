@@ -4,21 +4,11 @@
 
 package frc.robot;
 
-// import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
-// import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-
-// REV Imports
-/* import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.SparkLowLevel.MotorType;
-import com.revrobotics.spark.config.SparkMaxConfig;
-import com.revrobotics.spark.SparkBase.ResetMode;
-import com.revrobotics.spark.SparkBase.PersistMode; */
-
 
 public class Robot extends TimedRobot
 {
@@ -28,17 +18,12 @@ public class Robot extends TimedRobot
   private RobotContainer m_robotContainer;
   private Timer disabledTimer;
 
-  // --- VARIABLES FOR MOTOR TEST ---
-  //private SparkMax testMotor;
-  //private XboxController driverController; 
-  // --------------------------------
-
   public Robot()
   {
     instance = this;
   }
 
-  public static Robot getInstance()////
+  public static Robot getInstance()
   {
     return instance;
   }
@@ -48,20 +33,6 @@ public class Robot extends TimedRobot
   {
     m_robotContainer = new RobotContainer();
     disabledTimer = new Timer();
-    // --- MOTOR SETUP ---
-    // 1. Initialize the motor on CAN ID 43
-    //testMotor = new SparkMax(99, MotorType.kBrushless);
-
-    // 2. Configure Current Limit (Safe for Neo 550)
-    //SparkMaxConfig config = new SparkMaxConfig();
-    //config.smartCurrentLimit(25);
-    
-    // Apply config (Ignore yellow warnings, they are fine for now)
-    //testMotor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-
-    // 3. Initialize the Controller on Port 0
-    //driverController = new XboxController(0);
-    // -------------------
 
     if (isSimulation())
     {
@@ -73,7 +44,8 @@ public class Robot extends TimedRobot
   public void robotPeriodic()
   {
     CommandScheduler.getInstance().run();
-// Get robot's rotational speed
+    
+    // Get robot's rotational speed
     double omegaRps = m_robotContainer.getDrivebase().getSwerveDrive().getFieldVelocity().omegaRadiansPerSecond;
 
     // Get Limelight data
@@ -110,9 +82,6 @@ public class Robot extends TimedRobot
     }
   }
 
-
-  
-
   @Override
   public void disabledInit()
   {
@@ -132,12 +101,15 @@ public class Robot extends TimedRobot
     }
   }
 
-@Override
+  @Override
   public void autonomousInit()
   {
     m_robotContainer.setMotorBrake(true);
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
-
+    
+    // --- NEW: Trigger the homing routine safely! ---
+    m_robotContainer.shooter.startHoming();
+    
     // --- ALLIANCE SMART LIMELIGHT (AUTO) ---
     var alliance = DriverStation.getAlliance();
     if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
@@ -162,6 +134,10 @@ public class Robot extends TimedRobot
     if (m_autonomousCommand != null) { m_autonomousCommand.cancel(); } 
     else { CommandScheduler.getInstance().cancelAll(); }
 
+    // --- NEW: Trigger the homing routine safely! ---
+    // (It will instantly skip if it already homed during Auto)
+    m_robotContainer.shooter.startHoming();
+
     // --- ALLIANCE SMART LIMELIGHT (TELEOP) ---
     var alliance = DriverStation.getAlliance();
     if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
@@ -176,27 +152,12 @@ public class Robot extends TimedRobot
         edu.wpi.first.networktables.NetworkTableInstance.getDefault().getTable("limelight").getEntry("fiducial_id_filters_set").setDoubleArray(blueHubIDs);
     }
   }
-  
 
   @Override
   public void autonomousPeriodic() {}
 
-
-
   @Override
-  public void teleopPeriodic()
-  {
-    // --- BUTTON CONTROL LOGIC ---
-    // Check if the 'X' button is being held down on the main controller
-    //if (driverController.getXButton()) {
-      // If held, spin motor at 50% speed
-    //  testMotor.set(0.5); 
-   // } else {
-      // If released, stop the motor
-      //testMotor.set(0);
-    }
-    // ----------------------------
-  
+  public void teleopPeriodic() {}
 
   @Override
   public void testInit()

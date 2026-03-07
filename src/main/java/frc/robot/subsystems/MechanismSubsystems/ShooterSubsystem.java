@@ -1,10 +1,12 @@
 package frc.robot.subsystems.MechanismSubsystems;
 
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.DutyCycleEncoder;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -20,15 +22,20 @@ public class ShooterSubsystem extends SubsystemBase {
     private final SparkMax leftFlywheel = new SparkMax(19, MotorType.kBrushless);
     private final SparkMax hoodMotor = new SparkMax(20, MotorType.kBrushless); 
 
-    // Defining Hood sensor and control
+    // Defining Hood sensors and control
     private final DutyCycleEncoder hoodAbsoluteEncoder = new DutyCycleEncoder(0);
+    private final DigitalInput hoodLimitSwitch = new DigitalInput(1); // Limit Switch on DIO 1
     private final PIDController hoodPID = new PIDController(2.5, 0.0, 0.0);
 
-    // Making Safety Limits (tune later)
-    private final double HOOD_MIN_ANGLE = 0.10; // Bottom hard stop
-    private final double HOOD_MAX_ANGLE = 0.45; // Top hard stop
+    // Dynamic Safety Limits & State
+    private double hoodMinAngle = 0.0; 
+    private double hoodMaxAngle = 0.0; 
+    
+    // --- NEW: Tracking variables for the homing routine ---
+    private boolean isHoming = false; 
+    private boolean isHomed = false; 
 
-    // The Interpolating Map
+    // The Interpolating Maps
     private final InterpolatingDoubleTreeMap powerMap = new InterpolatingDoubleTreeMap();
     private final InterpolatingDoubleTreeMap hoodMap = new InterpolatingDoubleTreeMap();
     
@@ -45,75 +52,130 @@ public class ShooterSubsystem extends SubsystemBase {
         powerMap.put(3.0, 0.75); 
         powerMap.put(5.0, 1.00); 
 
-        // 2. Hood Angle (Absolute Encoder Position)
-        hoodMap.put(1.5, 0.12);  // Close shot: Hood mostly down
-        hoodMap.put(3.0, 0.25);  // Mid shot: Hood half up
-        hoodMap.put(5.0, 0.40);  // Far shot: Hood fully raised
+        // We DO NOT set the hoodMap here anymore! It generates automatically when homed.
+    }
+
+    // ==========================================
+    // THE MISSING METHOD!
+    // ==========================================
+    
+    /** Triggered by Robot.java on start to begin the homing sequence */
+    public void startHoming() {
+        // Force the homing routine to start
+        isHoming = true;
+        
+        // Tell the code to "forget" the old zero so it locks out the shooter 
+        // until the limit switch is hit again
+        isHomed = false; 
     }
 
     // ==========================================
     // SHOOTER MODES
     // ==========================================
     
-    /** Looks at the distance, checks the maps, and automatically adjusts the flywheels and hood */
     public void setDynamicShooter(double distanceToHubMeters) {
+        if (!isHomed) return; // Prevent firing if not zeroed
+
         double targetPower = powerMap.get(distanceToHubMeters);
         double targetHoodPosition = hoodMap.get(distanceToHubMeters);
 
-        // Apply Power to Flywheels
         rightFlywheel.set(targetPower);
         leftFlywheel.set(targetPower);
-
-        // Safely move the hood
         setHoodAngle(targetHoodPosition);
     }
 
-    /** * FERRY MODE: Bypasses the distance map and blasts the game piece across the field.
-     * Sets flywheels to 100% power and the hood to a high arcing angle.
-     */
     public void setFerryMode() {
+        if (!isHomed) return; 
+
         rightFlywheel.set(1.0);
         leftFlywheel.set(1.0);
-        
-        // Sets the hood to the absolute maximum safe arc
-        setHoodAngle(HOOD_MAX_ANGLE); 
+        setHoodAngle(hoodMaxAngle); 
     }
 
     public void stopShooter() {
         rightFlywheel.set(0);
         leftFlywheel.set(0);
         
-        // Drop the hood back to the bottom when the flywheels turn off
-        setHoodAngle(HOOD_MIN_ANGLE);
+        // Only force stop the hood if we aren't currently trying to home it!
+        if (isHomed) {
+            hoodMotor.set(0); 
+        }
     }
 
-    /** Simple toggle for testing flywheels manually */
     public void toggleShooter() {
         if (rightFlywheel.get() > 0.1) { stopShooter(); } 
-        else { rightFlywheel.set(0.5); leftFlywheel.set(-0.5); }
+        else { rightFlywheel.set(-0.1); leftFlywheel.set(0.1); }
+    }
+    
+    public Command toggleShooterCommand() {
+        return this.runOnce(() -> toggleShooter());
     }
 
     // ==========================================
     // HOOD CONTROL HELPER
     // ==========================================
 
-    /** Calculates the PID to safely move the hood to a specific angle */
     public void setHoodAngle(double targetAngle) {
-        // Clamp the requested hood position so it NEVER exceeds your mechanical limits
-        double safeTarget = MathUtil.clamp(targetAngle, HOOD_MIN_ANGLE, HOOD_MAX_ANGLE);
+        if (!isHomed) return; // Do nothing if not homed
 
-        // Calculate PID for the Hood and apply motor power
+        // HARDWARE LIMIT SWITCH OVERRIDE
+        if (hoodLimitSwitch.get()) {
+            hoodMotor.set(0);
+            return; 
+        }
+
+        // Clamp & Calculate PID
+        double safeTarget = MathUtil.clamp(targetAngle, hoodMinAngle, hoodMaxAngle);
         double currentHoodPosition = hoodAbsoluteEncoder.get();
         double hoodMotorPower = hoodPID.calculate(currentHoodPosition, safeTarget);
         
-        // Limit the max speed of the hood so it doesn't snap violently
-        hoodMotorPower = MathUtil.clamp(hoodMotorPower, -0.4, 0.4); 
+        hoodMotorPower = MathUtil.clamp(hoodMotorPower, -0.1, 0.1); 
         hoodMotor.set(hoodMotorPower);
     }
 
     @Override
     public void periodic() {
-        // Constantly push the encoder value to the dashboard so you can tune your limits!
+        
+        // ==========================================
+        // HOMING ROUTINE EXECUTION
+        // ==========================================
+        if (isHoming && !isHomed) {
+            // Drive down until we hit the switch
+            if (!hoodLimitSwitch.get()) {
+                hoodMotor.set(-0.15); // WARNING: Ensure negative moves DOWN!
+            } else {
+                // We hit the switch! Stop the motor.
+                hoodMotor.set(0);
+
+                // 1. Get position and round it
+                double rawStartPos = hoodAbsoluteEncoder.get();
+                hoodMinAngle = Math.round(rawStartPos * 100.0) / 100.0;
+                
+                // 2. Set max limit
+                hoodMaxAngle = hoodMinAngle + 0.38;
+
+                // 3. Dynamically set angle maps
+                hoodMap.clear();
+                hoodMap.put(1.5, hoodMinAngle + 0.02);
+                hoodMap.put(3.0, hoodMinAngle + 0.15);
+                hoodMap.put(5.0, hoodMinAngle + 0.30);
+
+                // 4. Lock it in so we can shoot!
+                isHomed = true;
+                isHoming = false;
+                System.out.println("Hood Homed! Min: " + hoodMinAngle);
+            }
+        }
+
+        // ==========================================
+        // DASHBOARD UPDATES
+        // ==========================================
         SmartDashboard.putNumber("Hood Absolute Position", hoodAbsoluteEncoder.get());
+        SmartDashboard.putBoolean("Hood Homed", isHomed);
+        SmartDashboard.putBoolean("Hood Limit Hit", hoodLimitSwitch.get());
+        if (isHomed) {
+            SmartDashboard.putNumber("Dynamic Hood Min", hoodMinAngle);
+            SmartDashboard.putNumber("Dynamic Hood Max", hoodMaxAngle);
+        }
     }
 }

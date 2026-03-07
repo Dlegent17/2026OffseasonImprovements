@@ -62,7 +62,7 @@ public class TurretSubsystem extends SubsystemBase {
      * When the command ends (e.g., the driver lets go of the button), the motor stops.
      */
     public Command turnRightCommand() {
-        return this.runEnd(() -> setTurretSpeed(0.75), () -> setTurretSpeed(0.0));
+        return this.runEnd(() -> setTurretSpeed(0.1), () -> setTurretSpeed(0.0));
     }
 
     /**
@@ -70,7 +70,7 @@ public class TurretSubsystem extends SubsystemBase {
      * When the command ends (e.g., the driver lets go of the button), the motor stops.
      */
     public Command turnLeftCommand() {
-        return this.runEnd(() -> setTurretSpeed(-0.75), () -> setTurretSpeed(0.0));
+        return this.runEnd(() -> setTurretSpeed(-0.1), () -> setTurretSpeed(0.0));
     }
     /**
      * Reads the current angle of the turret in degrees.
