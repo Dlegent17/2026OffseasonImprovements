@@ -39,7 +39,7 @@ public class SnapToTagCommand extends Command {
     @Override
     public void end(boolean interrupted) {
         // Tell the drivetrain to completely stop moving when the command finishes
-        // or if the driver lets go of the Y button early.
+        // or if the driver lets go of the button early.
         drivebase.drive(new Translation2d(0.0, 0.0), 0.0, false);
     }
 }

@@ -135,7 +135,7 @@ public class RobotContainer {
 
         // Right Trigger (Half Pull): Auto Shoot Routine
         Command triggerShootRoutine = Commands.sequence(
-            Commands.runOnce(() -> shooter.setDynamicShooter(2.0)), 
+            Commands.runOnce(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToSpeakerMeters())),
             new AutoAimTurretCommand(turret).withTimeout(1.5),
             indexer.feedToShooterCommand().withTimeout(0.5),
             Commands.runOnce(() -> shooter.stopShooter())
