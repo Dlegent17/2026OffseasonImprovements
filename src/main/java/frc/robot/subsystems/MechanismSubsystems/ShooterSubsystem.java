@@ -21,33 +21,29 @@ public class ShooterSubsystem extends SubsystemBase {
     private final SparkMax hoodMotor = new SparkMax(20, MotorType.kBrushless); 
 
     // Defining Hood sensor and control
-    // Assuming the absolute encoder is plugged into DIO Port 0 on the RoboRIO
     private final DutyCycleEncoder hoodAbsoluteEncoder = new DutyCycleEncoder(0);
     private final PIDController hoodPID = new PIDController(2.5, 0.0, 0.0);
 
     // Making Safety Limits (tune later)
-    // These represent the physical min and max rotations of your encoder
     private final double HOOD_MIN_ANGLE = 0.10; // Bottom hard stop
     private final double HOOD_MAX_ANGLE = 0.45; // Top hard stop
 
-    // The Interpolating Map - Tells the motors how hard to shoot depending on the position relative to April Tag
+    // The Interpolating Map
     private final InterpolatingDoubleTreeMap powerMap = new InterpolatingDoubleTreeMap();
     private final InterpolatingDoubleTreeMap hoodMap = new InterpolatingDoubleTreeMap();
     
-@SuppressWarnings("removal")
-    
+    @SuppressWarnings("removal")
     public ShooterSubsystem() {
 
         // REV Lib motor configurations
-        // Make the hood motor brake so it doesn't fall down when disabled
         SparkMaxConfig hoodConfig = new SparkMaxConfig();
         hoodConfig.idleMode(IdleMode.kBrake);
         hoodMotor.configure(hoodConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
         
         // 1. Flywheel Power (Percentage 0.0 to 1.0)
-        powerMap.put(1.5, 0.40); 
-        powerMap.put(3.0, 0.65); 
-        powerMap.put(5.0, 0.90); 
+        powerMap.put(1.5, 0.45); 
+        powerMap.put(3.0, 0.75); 
+        powerMap.put(5.0, 1.00); 
 
         // 2. Hood Angle (Absolute Encoder Position)
         hoodMap.put(1.5, 0.12);  // Close shot: Hood mostly down
@@ -55,28 +51,40 @@ public class ShooterSubsystem extends SubsystemBase {
         hoodMap.put(5.0, 0.40);  // Far shot: Hood fully raised
     }
 
+    // ==========================================
+    // SHOOTER MODES
+    // ==========================================
     
-     // Looks at the distance, checks the maps, and automatically adjusts the flywheels and hood
-    
+    /** Looks at the distance, checks the maps, and automatically adjusts the flywheels and hood */
     public void setDynamicShooter(double distanceToHubMeters) {
-        // 1. Get the numbers from the maps
         double targetPower = powerMap.get(distanceToHubMeters);
         double targetHoodPosition = hoodMap.get(distanceToHubMeters);
 
-        // 2. Clamp the requested hood position so it NEVER exceeds your mechanical limits
-        targetHoodPosition = MathUtil.clamp(targetHoodPosition, HOOD_MIN_ANGLE, HOOD_MAX_ANGLE);
-
-        // 3. Apply Power to Flywheels
+        // Apply Power to Flywheels
         rightFlywheel.set(targetPower);
         leftFlywheel.set(targetPower);
 
-        // 4. Calculate PID for the Hood and apply motor power (Using .get() instead of .getAbsolutePosition())
-        double currentHoodPosition = hoodAbsoluteEncoder.get();
-        double hoodMotorPower = hoodPID.calculate(currentHoodPosition, targetHoodPosition);
+        // Safely move the hood
+        setHoodAngle(targetHoodPosition);
+    }
+
+    /** * FERRY MODE: Bypasses the distance map and blasts the game piece across the field.
+     * Sets flywheels to 100% power and the hood to a high arcing angle.
+     */
+    public void setFerryMode() {
+        rightFlywheel.set(1.0);
+        leftFlywheel.set(1.0);
         
-        // Limit the max speed of the hood so it doesn't snap violently
-        hoodMotorPower = MathUtil.clamp(hoodMotorPower, -0.4, 0.4); 
-        hoodMotor.set(hoodMotorPower);
+        // Sets the hood to the absolute maximum safe arc
+        setHoodAngle(HOOD_MAX_ANGLE); 
+    }
+
+    public void stopShooter() {
+        rightFlywheel.set(0);
+        leftFlywheel.set(0);
+        
+        // Drop the hood back to the bottom when the flywheels turn off
+        setHoodAngle(HOOD_MIN_ANGLE);
     }
 
     /** Simple toggle for testing flywheels manually */
@@ -85,10 +93,22 @@ public class ShooterSubsystem extends SubsystemBase {
         else { rightFlywheel.set(0.5); leftFlywheel.set(-0.5); }
     }
 
-    public void stopShooter() {
-        rightFlywheel.set(0);
-        leftFlywheel.set(0);
-        hoodMotor.set(0); // PID stops running, brake mode holds it in place
+    // ==========================================
+    // HOOD CONTROL HELPER
+    // ==========================================
+
+    /** Calculates the PID to safely move the hood to a specific angle */
+    public void setHoodAngle(double targetAngle) {
+        // Clamp the requested hood position so it NEVER exceeds your mechanical limits
+        double safeTarget = MathUtil.clamp(targetAngle, HOOD_MIN_ANGLE, HOOD_MAX_ANGLE);
+
+        // Calculate PID for the Hood and apply motor power
+        double currentHoodPosition = hoodAbsoluteEncoder.get();
+        double hoodMotorPower = hoodPID.calculate(currentHoodPosition, safeTarget);
+        
+        // Limit the max speed of the hood so it doesn't snap violently
+        hoodMotorPower = MathUtil.clamp(hoodMotorPower, -0.4, 0.4); 
+        hoodMotor.set(hoodMotorPower);
     }
 
     @Override

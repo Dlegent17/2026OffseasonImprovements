@@ -157,10 +157,20 @@ public class RobotContainer {
                 drivebase.resetOdometry(visionPose);
             }
         })); // close the runOnce lambda and onTrue call
-
-        // --- TESTING BINDINGS ---
-        // D-Pad Up: Simple toggle to test the shooter flywheels at 50% speed
-        driverXbox.povUp().onTrue(Commands.runOnce(() -> shooter.toggleShooter(), shooter));
+// Y Button: Ferry Pass Sequence
+        // 1. Spool up to 100% power and raise hood to Max Arc
+        // 2. Aim the turret to our side of the field (using the speaker coordinates)
+        // 3. Fire the indexer
+        // 4. Stop shooter and drop the hood back down
+        Command ferrySequence = Commands.sequence(
+            Commands.runOnce(() -> shooter.setFerryMode()), 
+            new AutoAimTurretCommand(turret).withTimeout(1.0),
+            indexer.feedToShooterCommand().withTimeout(0.5),
+            Commands.runOnce(() -> shooter.stopShooter())
+        );
+        
+        driverXbox.y().onTrue(ferrySequence);
+     
     }
 
     // --- Helper Methods ---
