@@ -143,7 +143,7 @@ public class VisionSwerveSystem extends SubsystemBase {
         return Math.abs(chassisAimPID.getPositionError()) < 0.035;
     }
     /**
-     * Calculates the exact straight-line distance from the robot to the active Alliance Speaker.
+     * Calculates the exact straight-line distance from the robot to the active Alliance Hub.
      * @return Distance in meters.
      */
     public double getDistanceToSpeakerMeters() {

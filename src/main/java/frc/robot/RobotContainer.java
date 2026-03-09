@@ -19,6 +19,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+
 // Commands & Constants
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.AutoAimTurretCommand;
@@ -27,9 +28,11 @@ import frc.robot.subsystems.MechanismSubsystems.IndexerSubsystem;
 import frc.robot.subsystems.MechanismSubsystems.IntakeSubsystem;
 import frc.robot.subsystems.MechanismSubsystems.ShooterSubsystem;
 import frc.robot.subsystems.MechanismSubsystems.TurretSubsystem;
+
 // Subsystems
 import frc.robot.subsystems.SwerveSubsystems.SwerveSubsystem;
 import frc.robot.subsystems.SwerveSubsystems.VisionSwerveSystem;
+
 // Third-Party Libraries
 import swervelib.SwerveInputStream;
 
@@ -37,13 +40,12 @@ public class RobotContainer {
 
     // --- Subsystems ---
     public final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve"));
-// Pass the turret into the vision system!
+    // Pass the turret into the vision system!
     public final ShooterSubsystem shooter = new ShooterSubsystem();
     public final TurretSubsystem turret = new TurretSubsystem();
-    public final IntakeSubsystem intake = new IntakeSubsystem();
+    //public final IntakeSubsystem intake = new IntakeSubsystem();
     public final IndexerSubsystem indexer = new IndexerSubsystem();
     private final VisionSwerveSystem visionSwerveSystem = new VisionSwerveSystem(drivebase.getPoseEstimator(), turret);    
-
 
     // --- Controllers & Choosers ---
     final CommandXboxController driverXbox = new CommandXboxController(0);
@@ -69,11 +71,10 @@ public class RobotContainer {
         drivebase.setupPathPlanner();
 
         // 2. Register Named Commands for PathPlanner
-        NamedCommands.registerCommand("DeployAndIntake", intake.intakeInCommand());
-        NamedCommands.registerCommand("StopIntake", Commands.runOnce(() -> intake.stopRollers()));
+        //NamedCommands.registerCommand("DeployAndIntake", intake.intakeInCommand());
+        //NamedCommands.registerCommand("StopIntake", Commands.runOnce(() -> intake.stopRollers()));
         
         NamedCommands.registerCommand("FeedIndexer", indexer.feedToShooterCommand().withTimeout(0.5));
-        
         NamedCommands.registerCommand("SpinUpShooter", Commands.runOnce(() -> shooter.toggleShooter()));
         NamedCommands.registerCommand("StopShooter", Commands.runOnce(() -> shooter.stopShooter())); 
         NamedCommands.registerCommand("AutoAim", new AutoAimTurretCommand(turret).withTimeout(1.5));
@@ -84,10 +85,10 @@ public class RobotContainer {
             Commands.runOnce(() -> shooter.stopShooter())
         ));
 
-    // --- NEW: Register the Multi-Shot Commands for Auto! ---
-    NamedCommands.registerCommand("Shoot10Balls", shootMultipleBalls(10));
-    NamedCommands.registerCommand("Shoot20Balls", shootMultipleBalls(20));
-    NamedCommands.registerCommand("Shoot30Balls", shootMultipleBalls(30));
+        // --- NEW: Register the Multi-Shot Commands for Auto! ---
+        NamedCommands.registerCommand("Shoot10Balls", shootMultipleBalls(10));
+        NamedCommands.registerCommand("Shoot20Balls", shootMultipleBalls(20));
+        NamedCommands.registerCommand("Shoot30Balls", shootMultipleBalls(30));
 
         // 3. Build the Auto Chooser
         autoChooser = AutoBuilder.buildAutoChooser();
@@ -100,11 +101,22 @@ public class RobotContainer {
         autoChooser.setDefaultOption("Do Nothing", Commands.none());
         autoChooser.addOption("Drive Forward", drivebase.driveForward().withTimeout(1));
         
+        // Auto Shoot Routine (For PathPlanner Choices)
         Command autoShootRoutine = Commands.sequence(
-            Commands.runOnce(() -> shooter.setDynamicShooter(2.0)),
-            new AutoAimTurretCommand(turret).withTimeout(1.5),
-            indexer.feedToShooterCommand().withTimeout(0.5),
-            Commands.runOnce(() -> shooter.stopShooter())
+            // STEP 1: Aim turret AND spin up shooter using live distance from the Limelight/Odometry
+            Commands.parallel(
+                Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToSpeakerMeters()), shooter),
+                new AutoAimTurretCommand(turret)
+            ).withTimeout(1.5),
+
+            // STEP 2: Keep actively tracking distance and spinning while the indexer fires the ball
+            Commands.parallel(
+                Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToSpeakerMeters()), shooter),
+                indexer.feedToShooterCommand()
+            ).withTimeout(0.5),
+
+            // STEP 3: Shut everything down safely
+            Commands.runOnce(() -> shooter.stopShooter(), shooter)
         );
         autoChooser.addOption("Aim and Shoot", autoShootRoutine);
     }
@@ -133,44 +145,57 @@ public class RobotContainer {
         // A Button: Indexer Unjam
         driverXbox.a().whileTrue(indexer.reverseIndexerCommand());
 
-        // Right Trigger (Half Pull): Auto Shoot Routine
+        // Auto Shoot and aim routine
         Command triggerShootRoutine = Commands.sequence(
-            Commands.runOnce(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToSpeakerMeters())),
-            new AutoAimTurretCommand(turret).withTimeout(1.5),
-            indexer.feedToShooterCommand().withTimeout(0.5),
-            Commands.runOnce(() -> shooter.stopShooter())
-        );
-        driverXbox.rightTrigger(0.5).onTrue(triggerShootRoutine);
+            // STEP 1: Spin up the shooter AND aim the turret at the same time for 1.5 seconds
+            Commands.parallel(
+                Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToSpeakerMeters()), shooter),
+                new AutoAimTurretCommand(turret)
+            ).withTimeout(1.5),
 
+            // STEP 2: Keep the shooter holding its speed/angle while the indexer fires the ball
+            Commands.parallel(
+                Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToSpeakerMeters()), shooter),
+                indexer.feedToShooterCommand()
+            ).withTimeout(0.5),
+
+            // STEP 3: Shut everything down safely
+            Commands.runOnce(() -> shooter.stopShooter(), shooter)
+        );
+        
+        driverXbox.rightTrigger(0.5).onTrue(triggerShootRoutine);
+        
         // Right/Left Bumpers: Manual Turret Turn
         driverXbox.rightBumper().whileTrue(turret.turnRightCommand());
         driverXbox.leftBumper().whileTrue(turret.turnLeftCommand());
 
-        // Left Trigger: Deploy and Intake (Stows on release)
-        driverXbox.leftTrigger()
-            .whileTrue(intake.deployAndIntakeCommand())
-            .onFalse(intake.stowIntakeCommand());
         // X Button: Force Pose Reset to Vision coordinates
         driverXbox.x().onTrue(Commands.runOnce(() -> {
             Pose2d visionPose = visionSwerveSystem.getForceResetPose();
             if (visionPose != null) {
                 drivebase.resetOdometry(visionPose);
             }
-        })); // close the runOnce lambda and onTrue call
-// Y Button: Ferry Pass Sequence
-        // 1. Spool up to 100% power and raise hood to Max Arc
-        // 2. Aim the turret to our side of the field (using the speaker coordinates)
-        // 3. Fire the indexer
-        // 4. Stop shooter and drop the hood back down
+        })); 
+
+        // Y Button: Ferry Pass Sequence (FIXED to keep hood up!)
         Command ferrySequence = Commands.sequence(
-            Commands.runOnce(() -> shooter.setFerryMode()), 
-            new AutoAimTurretCommand(turret).withTimeout(1.0),
-            indexer.feedToShooterCommand().withTimeout(0.5),
-            Commands.runOnce(() -> shooter.stopShooter())
+            // Hold Ferry Mode while turret aims
+            Commands.parallel(
+                Commands.run(() -> shooter.setFerryMode(), shooter), 
+                new AutoAimTurretCommand(turret)
+            ).withTimeout(1.0),
+            
+            // Hold Ferry Mode while indexer feeds
+            Commands.parallel(
+                Commands.run(() -> shooter.setFerryMode(), shooter),
+                indexer.feedToShooterCommand()
+            ).withTimeout(0.5),
+
+            // Shut down
+            Commands.runOnce(() -> shooter.stopShooter(), shooter)
         );
         
         driverXbox.y().onTrue(ferrySequence);
-     
     }
 
     // --- Helper Methods ---

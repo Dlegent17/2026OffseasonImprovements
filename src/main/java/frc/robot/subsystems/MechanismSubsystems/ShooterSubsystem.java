@@ -102,9 +102,16 @@ public class ShooterSubsystem extends SubsystemBase {
         }
     }
 
+    @SuppressWarnings("deprecation")
     public void toggleShooter() {
-        if (rightFlywheel.get() > 0.1) { stopShooter(); } 
-        else { rightFlywheel.set(-0.1); leftFlywheel.set(0.1); }
+        if (rightFlywheel.get() > 0.1) {
+            stopShooter();
+        } else {
+            // Ensure correct motor inversion only if homed, then spin both motors at low power
+            rightFlywheel.setInverted(isHomed);
+            rightFlywheel.set(0.1);
+            leftFlywheel.set(0.1);
+        }
     }
     
     public Command toggleShooterCommand() {
