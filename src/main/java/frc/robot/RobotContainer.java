@@ -40,10 +40,9 @@ public class RobotContainer {
 
     // --- Subsystems ---
     public final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve"));
-    // Pass the turret into the vision system!
     public final ShooterSubsystem shooter = new ShooterSubsystem();
     public final TurretSubsystem turret = new TurretSubsystem();
-    //public final IntakeSubsystem intake = new IntakeSubsystem();
+    // public final IntakeSubsystem intake = new IntakeSubsystem();
     public final IndexerSubsystem indexer = new IndexerSubsystem();
     private final VisionSwerveSystem visionSwerveSystem = new VisionSwerveSystem(drivebase.getPoseEstimator(), turret);    
 
@@ -60,32 +59,21 @@ public class RobotContainer {
         .scaleTranslation(0.8)
         .allianceRelativeControl(true);
 
-    SwerveInputStream driveDirectAngle = driveAngularVelocity.copy()
-        .withControllerHeadingAxis(driverXbox::getRightX, driverXbox::getRightY)
-        .headingWhile(true);
+   
 
     // --- Constructor ---
     public RobotContainer() {
         
-        // 1. Setup PathPlanner FIRST so AutoBuilder doesn't crash
+        // 1. Setup PathPlanner
         drivebase.setupPathPlanner();
 
-        // 2. Register Named Commands for PathPlanner
-        //NamedCommands.registerCommand("DeployAndIntake", intake.intakeInCommand());
-        //NamedCommands.registerCommand("StopIntake", Commands.runOnce(() -> intake.stopRollers()));
-        
+        // 2. Register Named Commands
         NamedCommands.registerCommand("FeedIndexer", indexer.feedToShooterCommand().withTimeout(0.5));
         NamedCommands.registerCommand("SpinUpShooter", Commands.runOnce(() -> shooter.toggleShooter()));
         NamedCommands.registerCommand("StopShooter", Commands.runOnce(() -> shooter.stopShooter())); 
         NamedCommands.registerCommand("AutoAim", new AutoAimTurretCommand(turret).withTimeout(1.5));
+        NamedCommands.registerCommand("AimAndFireSequence", triggerShootRoutine);
 
-        NamedCommands.registerCommand("AimAndFireSequence", Commands.sequence(
-            new AutoAimTurretCommand(turret).withTimeout(1.5),
-            indexer.feedToShooterCommand().withTimeout(0.5),
-            Commands.runOnce(() -> shooter.stopShooter())
-        ));
-
-        // --- NEW: Register the Multi-Shot Commands for Auto! ---
         NamedCommands.registerCommand("Shoot10Balls", shootMultipleBalls(10));
         NamedCommands.registerCommand("Shoot20Balls", shootMultipleBalls(20));
         NamedCommands.registerCommand("Shoot30Balls", shootMultipleBalls(30));
@@ -100,110 +88,106 @@ public class RobotContainer {
 
         autoChooser.setDefaultOption("Do Nothing", Commands.none());
         autoChooser.addOption("Drive Forward", drivebase.driveForward().withTimeout(1));
-        
-        // Auto Shoot Routine (For PathPlanner Choices)
-        Command autoShootRoutine = Commands.sequence(
-            // STEP 1: Aim turret AND spin up shooter using live distance from the Limelight/Odometry
-            Commands.parallel(
-                Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToSpeakerMeters()), shooter),
-                new AutoAimTurretCommand(turret)
-            ).withTimeout(1.5),
 
-            // STEP 2: Keep actively tracking distance and spinning while the indexer fires the ball
-            Commands.parallel(
-                Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToSpeakerMeters()), shooter),
-                indexer.feedToShooterCommand()
-            ).withTimeout(0.5),
-
-            // STEP 3: Shut everything down safely
-            Commands.runOnce(() -> shooter.stopShooter(), shooter)
-        );
-        autoChooser.addOption("Aim and Shoot", autoShootRoutine);
+        // --- THE ADDITION: Auto-Seed Odometry while Disabled ---
+        // This runs once per second while sitting behind the glass.
+        // If the camera sees a tag, it automatically fixes the robot's field position.
+        Commands.repeatingSequence(
+            Commands.runOnce(() -> {
+                if (DriverStation.isDisabled()) {
+                    Pose2d visionPose = visionSwerveSystem.getForceResetPose();
+                    if (visionPose != null) {
+                        drivebase.resetOdometry(visionPose);
+                    }
+                }
+            }),
+            Commands.waitSeconds(1.0)
+        ).ignoringDisable(true).schedule();
     }
+private final Command triggerShootRoutine = Commands.sequence(
+    // Step 1: Aim and Spin up for 1.5 seconds
+    Commands.parallel(
+        Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToHubMeters()), shooter),
+        new AutoAimTurretCommand(turret)
+    ).withTimeout(1.5),
 
-    // --- Controller Bindings ---
+    // Step 2: Fire while maintaining speed for 0.5 seconds
+    Commands.parallel(
+        Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToHubMeters()), shooter),
+        new AutoAimTurretCommand(turret),
+        indexer.feedToShooterCommand()
+    ).withTimeout(0.5),
+
+    // Step 3: Hard Stop
+    Commands.runOnce(() -> shooter.stopShooter(), shooter)
+);
+
     private void configureBindings() {
         
-        // Default drive command
-        drivebase.setDefaultCommand(drivebase.driveFieldOriented(driveAngularVelocity));
+        
+        // Default drive command with vision updates included
+        drivebase.setDefaultCommand(drivebase.driveFieldOriented(driveAngularVelocity)
+            .alongWith(Commands.run(() -> visionSwerveSystem.updateVision(
+                drivebase.getHeading().getDegrees(), 
+                drivebase.getTurnRate()
+            ), visionSwerveSystem)));
 
-        // Start/Menu Button: Smart Zero Gyro based on Alliance Color
-        driverXbox.start().onTrue(Commands.runOnce(() -> {
+        // A Button: Smart Zero Gyro & Pose based on Alliance Color
+        driverXbox.a().onTrue(Commands.runOnce(() -> {
             var alliance = DriverStation.getAlliance();
-            // If Red Alliance, facing away is 180 degrees. If Blue, facing away is 0 degrees.
+            double xPos = (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) ? 12.51 : 4.03;
             double resetAngle = (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) ? 180.0 : 0.0;
             
             drivebase.resetOdometry(new Pose2d(
-                drivebase.getPose().getTranslation(), 
+                xPos, 4.035, 
                 Rotation2d.fromDegrees(resetAngle)
             ));
         }));
         
-        // Y Button: Snap To Tag 
+        // B Button: Snap To Tag (Chassis Aim)
         driverXbox.b().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
 
-        // A Button: Indexer Unjam
-        driverXbox.a().whileTrue(indexer.reverseIndexerCommand());
-
-        // Auto Shoot and aim routine
-        Command triggerShootRoutine = Commands.sequence(
-            // STEP 1: Spin up the shooter AND aim the turret at the same time for 1.5 seconds
-            Commands.parallel(
-                Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToSpeakerMeters()), shooter),
-                new AutoAimTurretCommand(turret)
-            ).withTimeout(1.5),
-
-            // STEP 2: Keep the shooter holding its speed/angle while the indexer fires the ball
-            Commands.parallel(
-                Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToSpeakerMeters()), shooter),
-                indexer.feedToShooterCommand()
-            ).withTimeout(0.5),
-
-            // STEP 3: Shut everything down safely
-            Commands.runOnce(() -> shooter.stopShooter(), shooter)
-        );
-        
+        // In configureBindings()
         driverXbox.rightTrigger(0.5).onTrue(triggerShootRoutine);
-        
+
         // Right/Left Bumpers: Manual Turret Turn
         driverXbox.rightBumper().whileTrue(turret.turnRightCommand());
         driverXbox.leftBumper().whileTrue(turret.turnLeftCommand());
 
-        // X Button: Force Pose Reset to Vision coordinates
+        // --- THE ADDITION: X Button - Manual Force Pose Reset ---
+        // This allows the driver to manually fix a "lost" robot icon by looking at a tag.
         driverXbox.x().onTrue(Commands.runOnce(() -> {
             Pose2d visionPose = visionSwerveSystem.getForceResetPose();
             if (visionPose != null) {
                 drivebase.resetOdometry(visionPose);
+                System.out.println("Odometry Reseeded Successfully!");
+            } else {
+                System.out.println("Reseed Failed: No Tags Visible");
             }
         })); 
 
-        // Y Button: Ferry Pass Sequence (FIXED to keep hood up!)
+        // Ferry Pass Sequence (kept for your reference)
         Command ferrySequence = Commands.sequence(
-            // Hold Ferry Mode while turret aims
             Commands.parallel(
                 Commands.run(() -> shooter.setFerryMode(), shooter), 
                 new AutoAimTurretCommand(turret)
             ).withTimeout(1.0),
             
-            // Hold Ferry Mode while indexer feeds
             Commands.parallel(
                 Commands.run(() -> shooter.setFerryMode(), shooter),
                 indexer.feedToShooterCommand()
             ).withTimeout(0.5),
 
-            // Shut down
             Commands.runOnce(() -> shooter.stopShooter(), shooter)
         );
         
-        driverXbox.y().onTrue(ferrySequence);
+        // driverXbox.y().onTrue(ferrySequence);
     }
 
     // --- Helper Methods ---
     
-    /** Generates a multi-shot sequence for PathPlanner Autos */
     public Command shootMultipleBalls(int numberOfShots) {
         Command repeatedSequence = Commands.none(); 
-
         for (int i = 0; i < numberOfShots; i++) {
             repeatedSequence = repeatedSequence.andThen(
                 new AutoAimTurretCommand(turret).withTimeout(1.0),

@@ -2,6 +2,7 @@ package frc.robot.subsystems.MechanismSubsystems;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.LimelightHelpers;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.MathUtil;
@@ -17,12 +18,12 @@ import com.revrobotics.spark.SparkBase.ResetMode;
 
 public class ShooterSubsystem extends SubsystemBase {
     
-    // Defining Motors
+    // Motors
     private final SparkMax rightFlywheel = new SparkMax(18, MotorType.kBrushless);
     private final SparkMax leftFlywheel = new SparkMax(19, MotorType.kBrushless);
     private final SparkMax hoodMotor = new SparkMax(20, MotorType.kBrushless); 
 
-    // Defining Hood sensors and control
+    // Sensors and control
     private final DutyCycleEncoder hoodAbsoluteEncoder = new DutyCycleEncoder(0);
     private final DigitalInput hoodLimitSwitch = new DigitalInput(1); 
     private final PIDController hoodPID = new PIDController(2.5, 0.0, 0.0);
@@ -33,7 +34,7 @@ public class ShooterSubsystem extends SubsystemBase {
     private boolean isHoming = false; 
     private boolean isHomed = false; 
 
-    // The Interpolating Maps
+    // Interpolating Maps
     private final InterpolatingDoubleTreeMap powerMap = new InterpolatingDoubleTreeMap();
     private final InterpolatingDoubleTreeMap hoodMap = new InterpolatingDoubleTreeMap();
     
@@ -43,10 +44,16 @@ public class ShooterSubsystem extends SubsystemBase {
         hoodConfig.idleMode(IdleMode.kBrake);
         hoodMotor.configure(hoodConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-        // --- FLYWHEEL SYNC (The "Handcuff" Fix) ---
-        // This tells the left motor: "Do exactly what the right motor does, but inverted."
-        // This prevents them from fighting each other and getting hot!
+        // --- FLYWHEEL CONFIG ---
+        SparkMaxConfig rightConfig = new SparkMaxConfig();
+        // CHANGE THIS TO FALSE IF MOTORS STILL SPIN BACKWARD
+        rightConfig.inverted(true); 
+        rightConfig.idleMode(IdleMode.kCoast); // Flywheels should coast for better recovery
+        rightFlywheel.configure(rightConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
         SparkMaxConfig leftConfig = new SparkMaxConfig();
+        // If motors are mirrored (facing each other), use 'true'. 
+        // If they are on the same side, use 'false'.
         leftConfig.follow(rightFlywheel, true); 
         leftFlywheel.configure(leftConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
@@ -67,23 +74,21 @@ public class ShooterSubsystem extends SubsystemBase {
         double targetPower = powerMap.get(distanceToHubMeters);
         double targetHoodPosition = hoodMap.get(distanceToHubMeters);
 
-        // Only set Right; Left follows automatically now
+        // Only need to set the leader (right); left follows automatically
         rightFlywheel.set(targetPower);
         setHoodAngle(targetHoodPosition);
     }
 
     public void stopShooter() {
         rightFlywheel.set(0);
-        if (isHomed) {
-            hoodMotor.set(0); 
-        }
+        // We stop the hood motor but keep it homed
+        hoodMotor.set(0); 
     }
 
     public void toggleShooter() {
         if (Math.abs(rightFlywheel.get()) > 0.1) {
             stopShooter();
         } else {
-            // Setting the leader (right) automatically sets the follower (left)
             rightFlywheel.set(0.2); 
         }
     }
@@ -91,8 +96,8 @@ public class ShooterSubsystem extends SubsystemBase {
     public void setHoodAngle(double targetAngle) {
         if (!isHomed) return; 
 
-        // SAFETY: TRUE = Pressed. If pressed, stop!
-        if (hoodLimitSwitch.get()) {
+        // Safety: If limit switch is hit while moving, stop
+        if (hoodLimitSwitch.get() && targetAngle < hoodAbsoluteEncoder.get()) {
             hoodMotor.set(0);
             return; 
         }
@@ -101,20 +106,23 @@ public class ShooterSubsystem extends SubsystemBase {
         double currentHoodPosition = hoodAbsoluteEncoder.get();
         double hoodMotorPower = hoodPID.calculate(currentHoodPosition, safeTarget);
         
-        // Increased power: 0.1 was too weak to move the heavy hood
         hoodMotorPower = MathUtil.clamp(hoodMotorPower, -0.3, 0.3); 
         hoodMotor.set(hoodMotorPower);
+    }
+
+    public void setFerryMode() {
+        rightFlywheel.set(1.0);
+        // Hood to max arc for a long distance "ferry" pass
+        setHoodAngle(hoodMaxAngle); 
     }
 
     @Override
     public void periodic() {
         // --- HOMING LOGIC ---
         if (isHoming && !isHomed) {
-            // If NOT pressed (false), keep driving down
             if (!hoodLimitSwitch.get()) {
                 hoodMotor.set(-0.2); 
             } else {
-                // If Pressed (true), STOP and lock in home
                 hoodMotor.set(0);
 
                 double rawStartPos = hoodAbsoluteEncoder.get();
@@ -128,11 +136,10 @@ public class ShooterSubsystem extends SubsystemBase {
 
                 isHomed = true;
                 isHoming = false;
-                System.out.println("Homing Complete!");
             }
         }
 
-        // --- DASHBOARD ---
+        // Dashboard Logging
         SmartDashboard.putNumber("FW Output", rightFlywheel.get());
         SmartDashboard.putBoolean("Hood Homed", isHomed);
         SmartDashboard.putBoolean("Switch Pressed", hoodLimitSwitch.get());

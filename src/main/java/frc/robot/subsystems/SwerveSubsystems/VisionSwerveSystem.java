@@ -17,32 +17,22 @@ public class VisionSwerveSystem extends SubsystemBase {
 
     private final SwerveDrivePoseEstimator poseEstimator;
     private final TurretSubsystem turret;
-    
-    // Make sure this matches the exact name of your Limelight in the web dashboard!
     private final String limelightName = "limelight"; 
 
-    // ==========================================
-    // STATIC CAD MEASUREMENTS
-    // ==========================================
-    
-    // 1. Where is the Turret Base relative to the floor center?
     private final Translation3d robotCenterToTurretBase = new Translation3d(0.000, 0.191, 0.310); 
 
-    // 2. Where is the Camera relative to the Turret Base? (When turret is at 0 degrees)
-    private final Transform3d turretBaseToCamera = new Transform3d(
-        new Translation3d(0.019, -0.118, 0.197), 
-        // CHANGED: Roll is 90 for vertical mount! Pitch is -10 (up).
-        new Rotation3d(Math.toRadians(90.0), Math.toRadians(-10.0), Math.toRadians(0.0)) 
-    );
+    // THE FIX: Roll is set to 0.0 because the Limelight Web UI is handling the 90-degree portrait rotation!
+private final Transform3d turretBaseToCamera = new Transform3d(
+    new Translation3d(0.019, -0.118, 0.197), 
+    // ROLL MUST BE 0.0 NOW because the Web UI is doing the work!
+    new Rotation3d(Math.toRadians(0.0), Math.toRadians(-10.0), 0.0) 
+);
 
     public VisionSwerveSystem(SwerveDrivePoseEstimator poseEstimator, TurretSubsystem turret) {
         this.poseEstimator = poseEstimator;
         this.turret = turret;
     }
 
-    /**
-     * Calculates the exact 3D position of the Limelight relative to the robot center.
-     */
     public Transform3d getDynamicRobotToCamera() {
         double currentTurretAngle = turret.getTurretAngleDegrees();
         
@@ -53,49 +43,38 @@ public class VisionSwerveSystem extends SubsystemBase {
         return new Transform3d(new Pose3d(), cameraPose);
     }
 
-    /**
-     * Runs the MegaTag2 pipeline. Call this 50x a second from your Swerve drive periodic!
-     * @param currentGyroYawDegrees The live angle of your robot's chassis from the Gyro
-     * @param currentGyroRate The rotational velocity of your robot (degrees per second)
-     */
     public void updateVision(double currentGyroYawDegrees, double currentGyroRate) {
-        
         Transform3d dynamicCameraPos = getDynamicRobotToCamera();
 
         LimelightHelpers.setCameraPose_RobotSpace(
             limelightName, 
-            dynamicCameraPos.getX(), 
-            dynamicCameraPos.getY(), 
-            dynamicCameraPos.getZ(), 
+            dynamicCameraPos.getX(), dynamicCameraPos.getY(), dynamicCameraPos.getZ(), 
             Math.toDegrees(dynamicCameraPos.getRotation().getX()), 
             Math.toDegrees(dynamicCameraPos.getRotation().getY()), 
             Math.toDegrees(dynamicCameraPos.getRotation().getZ())  
         );
 
-        LimelightHelpers.SetRobotOrientation(
-            limelightName, 
-            currentGyroYawDegrees, 
-            0, 0, 0, 0, 0 
-        );
+        LimelightHelpers.SetRobotOrientation(limelightName, currentGyroYawDegrees, 0, 0, 0, 0, 0);
 
         LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
 
-        if (mt2 == null || mt2.tagCount <= 0) return;
-        
-        if (Math.abs(currentGyroRate) > 360.0) return; 
+        if (mt2 == null || mt2.tagCount <= 0 || Math.abs(currentGyroRate) > 360.0) return; 
 
         boolean isTrustworthy = (mt2.tagCount >= 2) || (mt2.tagCount == 1 && mt2.avgTagDist < 3.0);
-
         if (isTrustworthy) {
             poseEstimator.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
         }
     }
 
     /**
-     * Grabs a pure MegaTag1 vision solve to instantly force-reset the robot's odometry.
+     * Uses MegaTag1 to find the robot's absolute field position.
+     * Use this ONLY for initial seeding at the start of a match.
      */
     public Pose2d getForceResetPose() {
+        // 1. Calculate where the camera is physically located RIGHT NOW based on turret angle
         Transform3d dynamicCameraPos = getDynamicRobotToCamera();
+        
+        // 2. Update Limelight's internal 3D offset so it knows the camera moved
         LimelightHelpers.setCameraPose_RobotSpace(
             limelightName, 
             dynamicCameraPos.getX(), dynamicCameraPos.getY(), dynamicCameraPos.getZ(), 
@@ -104,36 +83,42 @@ public class VisionSwerveSystem extends SubsystemBase {
             Math.toDegrees(dynamicCameraPos.getRotation().getZ())
         );
 
+        // 3. Get the MegaTag1 Pose (Standard 3D geometry)
         LimelightHelpers.PoseEstimate mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName);
 
+        // 4. Safety: Only return a pose if we actually see a tag!
         if (mt1 != null && mt1.tagCount > 0) {
             return mt1.pose;
         }
-        
         return null; 
     }
-
+    
     // ==========================================
-    // POSE-BASED CHASSIS AIMING
+    // POSE-BASED CHASSIS AIMING (2026 HUB)
     // ==========================================
     
     private final edu.wpi.first.math.controller.PIDController chassisAimPID = new edu.wpi.first.math.controller.PIDController(2.5, 0.0, 0.0); 
     
-    private final edu.wpi.first.math.geometry.Translation2d blueSpeaker = new edu.wpi.first.math.geometry.Translation2d(0.0, 5.55);
-    private final edu.wpi.first.math.geometry.Translation2d redSpeaker = new edu.wpi.first.math.geometry.Translation2d(16.54, 5.55);
+    // THE REAL 2026 HUB X/Y COORDINATES (In Meters)
+    private final edu.wpi.first.math.geometry.Translation2d blueHub = new edu.wpi.first.math.geometry.Translation2d(4.03, 4.035); 
+    private final edu.wpi.first.math.geometry.Translation2d redHub = new edu.wpi.first.math.geometry.Translation2d(12.51, 4.035);
 
     public double getAimingRotationSpeed() {
+        // SAFETY FIX: If we don't see a tag, don't try to snap!
+        if (!LimelightHelpers.getTV(limelightName)) {
+            return 0.0;
+        }
+
         edu.wpi.first.math.geometry.Pose2d robotPose = poseEstimator.getEstimatedPosition();
         
         var alliance = edu.wpi.first.wpilibj.DriverStation.getAlliance();
         edu.wpi.first.math.geometry.Translation2d target = (alliance.isPresent() && alliance.get() == edu.wpi.first.wpilibj.DriverStation.Alliance.Red) 
-            ? redSpeaker : blueSpeaker;
+            ? redHub : blueHub;
 
         double dx = target.getX() - robotPose.getX();
         double dy = target.getY() - robotPose.getY();
         
         double targetAngleRad = Math.atan2(dy, dx);
-
         chassisAimPID.enableContinuousInput(-Math.PI, Math.PI);
         
         return chassisAimPID.calculate(robotPose.getRotation().getRadians(), targetAngleRad);
@@ -142,20 +127,13 @@ public class VisionSwerveSystem extends SubsystemBase {
     public boolean isAligned() {
         return Math.abs(chassisAimPID.getPositionError()) < 0.035;
     }
-    /**
-     * Calculates the exact straight-line distance from the robot to the active Alliance Hub.
-     * @return Distance in meters.
-     */
-    public double getDistanceToSpeakerMeters() {
-        // 1. Get where the robot is right now
+
+    public double getDistanceToHubMeters() {
         Pose2d robotPose = poseEstimator.getEstimatedPosition();
-        
-        // 2. Pick the correct speaker based on our alliance color
         var alliance = DriverStation.getAlliance();
         Translation2d target = (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) 
-            ? redSpeaker : blueSpeaker;
+            ? redHub : blueHub;
 
-        // 3. WPILib calculates the exact hypotenuse (distance) between the two points!
         return robotPose.getTranslation().getDistance(target);
     }
 }

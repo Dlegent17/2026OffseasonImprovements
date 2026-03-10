@@ -29,11 +29,11 @@ public class SnapToTagCommand extends Command {
         drivebase.drive(new Translation2d(0.0, 0.0), rotSpeed, true);
     }
 
-    @Override
+   @Override
     public boolean isFinished() {
-        // The command automatically finishes and releases the wheels 
-        // when the robot is perfectly aligned.
-        return vision.isAligned();
+        // By returning false, the command never finishes on its own.
+        // It will only stop when the driver physically lets go of the button!
+        return false; 
     }
 
     @Override
