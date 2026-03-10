@@ -12,7 +12,7 @@ public class AutoAimTurretCommand extends Command {
     public AutoAimTurretCommand(TurretSubsystem turret) {
         this.turret = turret;
         // P-value set to 0.02 to prevent the violent overshoot we saw earlier!
-        this.aimController = new PIDController(0.02, 0.0, 0.0);
+        this.aimController = new PIDController(0.015, 0.0, 0.0015);
         addRequirements(turret);
     }
 
