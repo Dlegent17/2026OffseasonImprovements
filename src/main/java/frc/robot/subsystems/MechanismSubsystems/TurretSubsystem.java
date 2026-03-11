@@ -27,9 +27,9 @@ public class TurretSubsystem extends SubsystemBase {
         turretConfig.idleMode(IdleMode.kBrake); 
         
         turretConfig.softLimit.forwardSoftLimitEnabled(true);
-        turretConfig.softLimit.forwardSoftLimit(1.5); 
+        turretConfig.softLimit.forwardSoftLimit(10); 
         turretConfig.softLimit.reverseSoftLimitEnabled(true);
-        turretConfig.softLimit.reverseSoftLimit(-1.5); 
+        turretConfig.softLimit.reverseSoftLimit(-10); 
 
         turretMotor.configure(turretConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     }
@@ -37,16 +37,19 @@ public class TurretSubsystem extends SubsystemBase {
    public void setTurretSpeed(double speed) {
     double currentAngle = getTurretAngleDegrees();
 
+    // DEBUG: Put this on the dashboard to see exactly what the code sees
+    SmartDashboard.putNumber("Turret Realtime Angle", currentAngle);
+
     // With -speed at the bottom:
     // A positive speed input actually makes the motor go NEGATIVE (Left).
     // A negative speed input actually makes the motor go POSITIVE (Right).
 
-  /*   if (currentAngle > 300 && speed < 0) { 
+    if (currentAngle > 100 && speed < 0) { 
         // We are at the Right limit. If speed is negative, the motor 
         // would try to go further Right. Block it.
         turretMotor.set(0); 
     } 
-    else if (currentAngle < -300 && speed > 0) { 
+    else if (currentAngle < -100 && speed > 0) { 
         // We are at the Left limit. If speed is positive, the motor 
         // would try to go further Left. Block it.
         turretMotor.set(0); 
@@ -54,7 +57,7 @@ public class TurretSubsystem extends SubsystemBase {
     else {
         // Safe zone: Apply the inverted speed
         turretMotor.set(-speed); 
-    } */
+    }
 }
 /**
      * A Command that manually rotates the turret to the right.
@@ -79,7 +82,7 @@ public class TurretSubsystem extends SubsystemBase {
     }
     @Override
 public void periodic() {
-   double ty = LimelightHelpers.getTY("limelight");
+    double ty = LimelightHelpers.getTY("limelight");
     boolean hasTarget = LimelightHelpers.getTV("limelight");
 
     // This sends it to the RioLog (The text list you see now)
