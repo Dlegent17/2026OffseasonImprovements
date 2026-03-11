@@ -36,6 +36,7 @@ import frc.robot.subsystems.SwerveSubsystems.VisionSwerveSystem;
 // Third-Party Libraries
 import swervelib.SwerveInputStream;
 
+
 public class RobotContainer {
 
     // --- Subsystems ---
@@ -45,7 +46,7 @@ public class RobotContainer {
     // public final IntakeSubsystem intake = new IntakeSubsystem();
     public final IndexerSubsystem indexer = new IndexerSubsystem();
     private final VisionSwerveSystem visionSwerveSystem = new VisionSwerveSystem(drivebase.getPoseEstimator(), turret);    
-
+    private final String limelightName = "limelight";
     // --- Controllers & Choosers ---
     final CommandXboxController driverXbox = new CommandXboxController(0);
     private final SendableChooser<Command> autoChooser;
@@ -59,7 +60,6 @@ public class RobotContainer {
         .scaleTranslation(0.8)
         .allianceRelativeControl(true);
 
-   
 
     // --- Constructor ---
     public RobotContainer() {
@@ -104,6 +104,7 @@ public class RobotContainer {
             Commands.waitSeconds(1.0)
         ).ignoringDisable(true).schedule();
     }
+
 private final Command triggerShootRoutine = Commands.sequence(
     // STEP 1: Check if the tag is valid BEFORE moving the turret
     Commands.either(
@@ -126,6 +127,8 @@ private final Command triggerShootRoutine = Commands.sequence(
     // ALWAYS stop the shooter at the end
     Commands.runOnce(() -> shooter.stopShooter(), shooter)
 );
+
+
 
     private void configureBindings() {
         
@@ -150,8 +153,8 @@ private final Command triggerShootRoutine = Commands.sequence(
         }));
         
         // B Button: Snap To Tag (Chassis Aim)
-        driverXbox.b().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
-
+        //driverXbox.b().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
+        driverXbox.b().onTrue(Commands.runOnce(() -> shooter.toggleShooter()));
         // In configureBindings()
         driverXbox.rightTrigger(0.5).onTrue(triggerShootRoutine);
 

@@ -33,6 +33,9 @@ public class ShooterSubsystem extends SubsystemBase {
     private double hoodMaxAngle = 0.0; 
     private boolean isHoming = false; 
     private boolean isHomed = false; 
+    
+    // THE FIX: Add a variable to track where the hood SHOULD be at all times
+    private double currentHoodTarget = 0.0; 
 
     // Interpolating Maps
     private final InterpolatingDoubleTreeMap powerMap = new InterpolatingDoubleTreeMap();
@@ -46,21 +49,20 @@ public class ShooterSubsystem extends SubsystemBase {
 
         // --- FLYWHEEL CONFIG ---
         SparkMaxConfig rightConfig = new SparkMaxConfig();
-        // CHANGE THIS TO FALSE IF MOTORS STILL SPIN BACKWARD
         rightConfig.inverted(true); 
-        rightConfig.idleMode(IdleMode.kCoast); // Flywheels should coast for better recovery
+        rightConfig.idleMode(IdleMode.kCoast); 
         rightFlywheel.configure(rightConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         SparkMaxConfig leftConfig = new SparkMaxConfig();
-        // If motors are mirrored (facing each other), use 'true'. 
-        // If they are on the same side, use 'false'.
         leftConfig.follow(rightFlywheel, true); 
         leftFlywheel.configure(leftConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         // --- INTERPOLATION MAPS ---
         powerMap.put(1.5, 0.45); 
         powerMap.put(3.0, 0.75); 
-        powerMap.put(5.0, 1.00); 
+        powerMap.put(5.0, 1.00);
+        
+        startHoming();
     }
 
     public void startHoming() {
@@ -72,17 +74,19 @@ public class ShooterSubsystem extends SubsystemBase {
         if (!isHomed) return; 
 
         double targetPower = powerMap.get(distanceToHubMeters);
-        double targetHoodPosition = hoodMap.get(distanceToHubMeters);
-
-        // Only need to set the leader (right); left follows automatically
+        
+        // Just update the target! periodic() handles the movement.
+        currentHoodTarget = hoodMap.get(distanceToHubMeters);
         rightFlywheel.set(targetPower);
-        setHoodAngle(targetHoodPosition);
     }
 
     public void stopShooter() {
         rightFlywheel.set(0);
-        // We stop the hood motor but keep it homed
-        hoodMotor.set(0); 
+        
+        // This acts as your "Return to Zero" state.
+        if (isHomed) {
+            currentHoodTarget = hoodMinAngle; 
+        }
     }
 
     public void toggleShooter() {
@@ -95,30 +99,18 @@ public class ShooterSubsystem extends SubsystemBase {
     
     public void setHoodAngle(double targetAngle) {
         if (!isHomed) return; 
-
-        // Safety: If limit switch is hit while moving, stop
-        if (hoodLimitSwitch.get() && targetAngle < hoodAbsoluteEncoder.get()) {
-            hoodMotor.set(0);
-            return; 
-        }
-
-        double safeTarget = MathUtil.clamp(targetAngle, hoodMinAngle, hoodMaxAngle);
-        double currentHoodPosition = hoodAbsoluteEncoder.get();
-        double hoodMotorPower = hoodPID.calculate(currentHoodPosition, safeTarget);
-        
-        hoodMotorPower = MathUtil.clamp(hoodMotorPower, -0.3, 0.3); 
-        hoodMotor.set(hoodMotorPower);
+        // Manually override the target if needed
+        currentHoodTarget = targetAngle;
     }
 
     public void setFerryMode() {
         rightFlywheel.set(1.0);
-        // Hood to max arc for a long distance "ferry" pass
-        setHoodAngle(hoodMaxAngle); 
+        currentHoodTarget = hoodMaxAngle; 
     }
 
     @Override
     public void periodic() {
-        // --- HOMING LOGIC ---
+        // --- 1. HOMING LOGIC ---
         if (isHoming && !isHomed) {
             if (!hoodLimitSwitch.get()) {
                 hoodMotor.set(-0.2); 
@@ -133,9 +125,29 @@ public class ShooterSubsystem extends SubsystemBase {
                 hoodMap.put(1.5, hoodMinAngle + 0.02);
                 hoodMap.put(3.0, hoodMinAngle + 0.15);
                 hoodMap.put(5.0, hoodMinAngle + 0.30);
+                
+                // Immediately set the default state to resting at the bottom
+                currentHoodTarget = hoodMinAngle;
 
                 isHomed = true;
                 isHoming = false;
+            }
+        } 
+        
+        // --- 2. CONTINUOUS PID HEARTBEAT ---
+        // This guarantees the hood always tracks its target, even after commands finish.
+        if (isHomed && !isHoming) {
+            double currentHoodPosition = hoodAbsoluteEncoder.get();
+            
+            // Safety: If switch is pressed and we are trying to go lower, stop.
+            if (hoodLimitSwitch.get() && currentHoodTarget <= currentHoodPosition) {
+                hoodMotor.set(0);
+            } else {
+                double safeTarget = MathUtil.clamp(currentHoodTarget, hoodMinAngle, hoodMaxAngle);
+                double hoodMotorPower = hoodPID.calculate(currentHoodPosition, safeTarget);
+                
+                hoodMotorPower = MathUtil.clamp(hoodMotorPower, -0.3, 0.3); 
+                hoodMotor.set(hoodMotorPower);
             }
         }
 
@@ -143,5 +155,7 @@ public class ShooterSubsystem extends SubsystemBase {
         SmartDashboard.putNumber("FW Output", rightFlywheel.get());
         SmartDashboard.putBoolean("Hood Homed", isHomed);
         SmartDashboard.putBoolean("Switch Pressed", hoodLimitSwitch.get());
+        SmartDashboard.putNumber("Hood Target", currentHoodTarget);
+        SmartDashboard.putNumber("Hood Current", hoodAbsoluteEncoder.get());
     }
 }

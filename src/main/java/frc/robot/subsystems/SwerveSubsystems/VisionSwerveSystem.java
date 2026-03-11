@@ -23,7 +23,7 @@ public class VisionSwerveSystem extends SubsystemBase {
 
     // THE FIX: Roll is set to 0.0 because the Limelight Web UI is handling the 90-degree portrait rotation!
 private final Transform3d turretBaseToCamera = new Transform3d(
-    new Translation3d(0.019, -0.118, 0.197), 
+    new Translation3d(-0.12065, 0.118, 0.4064), 
     // ROLL MUST BE 0.0 NOW because the Web UI is doing the work!
     new Rotation3d(Math.toRadians(0.0), Math.toRadians(-10.0), 0.0) 
 );
@@ -124,6 +124,8 @@ private final Transform3d turretBaseToCamera = new Transform3d(
         return chassisAimPID.calculate(robotPose.getRotation().getRadians(), targetAngleRad);
     }
 
+    
+
     public boolean isAligned() {
         return Math.abs(chassisAimPID.getPositionError()) < 0.035;
     }
@@ -137,18 +139,16 @@ private final Transform3d turretBaseToCamera = new Transform3d(
         return robotPose.getTranslation().getDistance(target);
     }
     public boolean isTargetValid() {
-    // 1. If we don't see anything, it's not valid
-    if (!LimelightHelpers.getTV(limelightName)) {
+        // 1. If we don't see anything, it's not valid
+        if (!LimelightHelpers.getTV(limelightName)) {
         return false;
     }
 
-    // 2. Get the Tag ID
-    int tagID = (int) LimelightHelpers.getFiducialID(limelightName);
+        // 2. Get the Tag ID
+        int tagID = (int) LimelightHelpers.getFiducialID(limelightName);
+    // 3. Allow BOTH Hub Tags (9 for Red, 10 for Blue)
+        boolean isHubTag = (tagID == 9 || tagID == 10);
 
-    // 3. ONLY allow Hub Tags (10)
-    // This prevents the turret from "whipping" around to look at side-wall tags
-    boolean isHubTag = (tagID == 10);
-
-    return isHubTag;
+        return isHubTag;
 }
 }

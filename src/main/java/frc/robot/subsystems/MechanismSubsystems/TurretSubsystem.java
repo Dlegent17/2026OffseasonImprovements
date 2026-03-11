@@ -14,51 +14,50 @@ import com.revrobotics.spark.SparkBase.PersistMode;
 
 public class TurretSubsystem extends SubsystemBase {
     private final SparkMax turretMotor;
-    
+
     // REPLACE 100.0 WITH YOUR ACTUAL TURRET GEAR RATIO
     // Example: If it takes 100 motor spins for 1 turret spin, ratio is 100.0
-    private final double TURRET_GEAR_RATIO = 100.0; 
+    private final double TURRET_GEAR_RATIO = 50.0;
+    // bacon
+    // --- DEFINE YOUR LIMITS ONCE, IN DEGREES ---
+    private static final double FORWARD_LIMIT_DEGREES =90.0; // max rightward rotation
+    private static final double REVERSE_LIMIT_DEGREES = -90.0; // max leftward rotation
 
     public TurretSubsystem() {
         turretMotor = new SparkMax(24, MotorType.kBrushless);
         SparkMaxConfig turretConfig = new SparkMaxConfig();
-        
-        turretConfig.smartCurrentLimit(30); 
-        turretConfig.idleMode(IdleMode.kBrake); 
-        
+
+        turretConfig.smartCurrentLimit(30);
+        turretConfig.idleMode(IdleMode.kBrake);
+
+        // Convert degree limits to motor rotations for the hardware soft limits
         turretConfig.softLimit.forwardSoftLimitEnabled(true);
-        turretConfig.softLimit.forwardSoftLimit(10); 
+        turretConfig.softLimit.forwardSoftLimit((float) degreesToMotorRotations(FORWARD_LIMIT_DEGREES));
         turretConfig.softLimit.reverseSoftLimitEnabled(true);
-        turretConfig.softLimit.reverseSoftLimit(-10); 
+        turretConfig.softLimit.reverseSoftLimit((float) degreesToMotorRotations(REVERSE_LIMIT_DEGREES));
 
         turretMotor.configure(turretConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     }
-
-   public void setTurretSpeed(double speed) {
-    double currentAngle = getTurretAngleDegrees();
-
-    // DEBUG: Put this on the dashboard to see exactly what the code sees
-    SmartDashboard.putNumber("Turret Realtime Angle", currentAngle);
-
-    // With -speed at the bottom:
-    // A positive speed input actually makes the motor go NEGATIVE (Left).
-    // A negative speed input actually makes the motor go POSITIVE (Right).
-
-    if (currentAngle > 100 && speed < 0) { 
-        // We are at the Right limit. If speed is negative, the motor 
-        // would try to go further Right. Block it.
-        turretMotor.set(0); 
-    } 
-    else if (currentAngle < -100 && speed > 0) { 
-        // We are at the Left limit. If speed is positive, the motor 
-        // would try to go further Left. Block it.
-        turretMotor.set(0); 
-    } 
-    else {
-        // Safe zone: Apply the inverted speed
-        turretMotor.set(-speed); 
-    }
+    private double degreesToMotorRotations(double degrees) {
+        return (degrees / 360.0) * TURRET_GEAR_RATIO;
 }
+
+    public void setTurretSpeed(double speed) {
+        double currentAngle = getTurretAngleDegrees();
+
+        SmartDashboard.putNumber("Turret Realtime Angle", currentAngle);
+
+        // Software limits using the same degree constants as the hardware limits.
+        // These act as a secondary safety layer on top of the SparkMax soft limits.
+        if (currentAngle > FORWARD_LIMIT_DEGREES && speed < 0) {
+            turretMotor.set(0);
+        } else if (currentAngle < REVERSE_LIMIT_DEGREES && speed > 0) {
+            turretMotor.set(0);
+        } else {
+            turretMotor.set(-speed);
+        }
+}
+
 /**
      * A Command that manually rotates the turret to the right.
      */
@@ -81,7 +80,7 @@ public class TurretSubsystem extends SubsystemBase {
         return (motorRotations / TURRET_GEAR_RATIO) * 360.0; 
     }
     @Override
-public void periodic() {
+    public void periodic() {
     double ty = LimelightHelpers.getTY("limelight");
     boolean hasTarget = LimelightHelpers.getTV("limelight");
 
@@ -94,5 +93,5 @@ public void periodic() {
     // This creates a "Centered" indicator
     boolean isCentered = hasTarget && Math.abs(ty) < 1.0;
     SmartDashboard.putBoolean("Target Centered", isCentered);
-}
+    }
 }
