@@ -136,4 +136,19 @@ private final Transform3d turretBaseToCamera = new Transform3d(
 
         return robotPose.getTranslation().getDistance(target);
     }
+    public boolean isTargetValid() {
+    // 1. If we don't see anything, it's not valid
+    if (!LimelightHelpers.getTV(limelightName)) {
+        return false;
+    }
+
+    // 2. Get the Tag ID
+    int tagID = (int) LimelightHelpers.getFiducialID(limelightName);
+
+    // 3. ONLY allow Hub Tags (10)
+    // This prevents the turret from "whipping" around to look at side-wall tags
+    boolean isHubTag = (tagID == 10);
+
+    return isHubTag;
+}
 }

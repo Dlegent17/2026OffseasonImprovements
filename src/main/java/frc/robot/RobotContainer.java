@@ -105,20 +105,25 @@ public class RobotContainer {
         ).ignoringDisable(true).schedule();
     }
 private final Command triggerShootRoutine = Commands.sequence(
-    // Step 1: Aim and Spin up for 1.5 seconds
-    Commands.parallel(
-        Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToHubMeters()), shooter),
-        new AutoAimTurretCommand(turret)
-    ).withTimeout(1.5),
+    // STEP 1: Check if the tag is valid BEFORE moving the turret
+    Commands.either(
+        // IF TAG IS 9 or 10: Run the full aim and shoot sequence
+        Commands.sequence(
+            Commands.parallel(
+                Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToHubMeters()), shooter),
+                new AutoAimTurretCommand(turret)
+            ).withTimeout(1.5),
+            indexer.feedToShooterCommand().withTimeout(0.5)
+        ),
 
-    // Step 2: Fire while maintaining speed for 0.5 seconds
-    Commands.parallel(
-        Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToHubMeters()), shooter),
-        new AutoAimTurretCommand(turret),
-        indexer.feedToShooterCommand()
-    ).withTimeout(0.5),
+        // IF TAG IS WRONG: Stay still and tell the driver why
+        Commands.print("SAFETY STOP: Target is not Hub Tag 9 or 10! Turret preserved."),
 
-    // Step 3: Hard Stop
+        // THE CONDITION: Check before moving!
+        visionSwerveSystem::isTargetValid
+    ),
+
+    // ALWAYS stop the shooter at the end
     Commands.runOnce(() -> shooter.stopShooter(), shooter)
 );
 
