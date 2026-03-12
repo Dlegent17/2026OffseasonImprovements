@@ -125,7 +125,8 @@ private final Command triggerShootRoutine = Commands.sequence(
     ),
 
     // ALWAYS stop the shooter at the end
-    Commands.runOnce(() -> shooter.stopShooter(), shooter)
+    Commands.runOnce(() -> shooter.stopShooter(), shooter),
+    Commands.runOnce(() -> shooter.startHoming(), shooter)
 );
 
 
@@ -153,8 +154,8 @@ private final Command triggerShootRoutine = Commands.sequence(
         }));
         
         // B Button: Snap To Tag (Chassis Aim)
-        //driverXbox.b().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
-        driverXbox.b().onTrue(Commands.runOnce(() -> shooter.toggleShooter()));
+        driverXbox.b().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
+        //driverXbox.b().onTrue(Commands.runOnce(() -> shooter.toggleShooter()));
         // In configureBindings()
         driverXbox.rightTrigger(0.5).onTrue(triggerShootRoutine);
 

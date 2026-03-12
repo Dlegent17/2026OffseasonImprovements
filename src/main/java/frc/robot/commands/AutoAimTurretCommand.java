@@ -29,7 +29,7 @@ public class AutoAimTurretCommand extends Command {
             // 3. THE FIX: The Negative Sign
             // If the turret still runs to the edge, REMOVE the minus sign.
             // If it already didn't have one, ADD it.
-            turret.setTurretSpeed(-speed); 
+            turret.setTurretSpeed(speed); 
             
         } else {
             // If we lose the target, stop moving so we don't spin wildly
