@@ -7,6 +7,7 @@ import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -97,7 +98,7 @@ private final Transform3d turretBaseToCamera = new Transform3d(
     // POSE-BASED CHASSIS AIMING (2026 HUB)
     // ==========================================
     
-    private final edu.wpi.first.math.controller.PIDController chassisAimPID = new edu.wpi.first.math.controller.PIDController(2.5, 0.0, 0.0); 
+    private final edu.wpi.first.math.controller.PIDController chassisAimPID = new edu.wpi.first.math.controller.PIDController(0.1, 0.0, 0.0); 
     
     // THE REAL 2026 HUB X/Y COORDINATES (In Meters)
     private final edu.wpi.first.math.geometry.Translation2d blueHub = new edu.wpi.first.math.geometry.Translation2d(4.03, 4.035); 
@@ -138,17 +139,10 @@ private final Transform3d turretBaseToCamera = new Transform3d(
 
         return robotPose.getTranslation().getDistance(target);
     }
-    public boolean isTargetValid() {
-        // 1. If we don't see anything, it's not valid
-        if (!LimelightHelpers.getTV(limelightName)) {
-        return false;
+
+@Override
+    public void periodic() {
+        // Broadcast the live distance to the dashboard so you can write it in your notebook
+        SmartDashboard.putNumber("LIVE Distance (Meters)", getDistanceToHubMeters());
     }
-
-        // 2. Get the Tag ID
-        int tagID = (int) LimelightHelpers.getFiducialID(limelightName);
-    // 3. Allow BOTH Hub Tags (9 for Red, 10 for Blue)
-        boolean isHubTag = (tagID == 9 || tagID == 10);
-
-        return isHubTag;
-}
 }

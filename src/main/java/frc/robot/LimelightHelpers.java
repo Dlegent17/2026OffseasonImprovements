@@ -1579,7 +1579,7 @@ public class LimelightHelpers {
         return toPose2D(result);
 
     }
-   
+
     /**
      * Gets the current IMU data from NetworkTables.
      * IMU data is formatted as [robotYaw, Roll, Pitch, Yaw, gyroX, gyroY, gyroZ, accelX, accelY, accelZ].
@@ -1734,7 +1734,7 @@ public class LimelightHelpers {
             Flush();
         }
     }
-   
+
     /**
      * Configures the IMU mode for MegaTag2 Localization
      * 

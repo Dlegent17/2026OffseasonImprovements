@@ -68,7 +68,7 @@ public class RobotContainer {
         drivebase.setupPathPlanner();
 
         // 2. Register Named Commands
-        NamedCommands.registerCommand("FeedIndexer", indexer.feedToShooterCommand().withTimeout(0.5));
+        NamedCommands.registerCommand("FeedIndexer", indexer.feedToShooterCommand());
         NamedCommands.registerCommand("SpinUpShooter", Commands.runOnce(() -> shooter.toggleShooter()));
         NamedCommands.registerCommand("StopShooter", Commands.runOnce(() -> shooter.stopShooter())); 
         NamedCommands.registerCommand("AutoAim", new AutoAimTurretCommand(turret).withTimeout(1.5));
@@ -106,33 +106,26 @@ public class RobotContainer {
     }
 
 private final Command triggerShootRoutine = Commands.sequence(
-    // STEP 1: Check if the tag is valid BEFORE moving the turret
-    Commands.either(
-        // IF TAG IS 9 or 10: Run the full aim and shoot sequence
-        Commands.sequence(
-            Commands.parallel(
-                Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToHubMeters()), shooter),
-                new AutoAimTurretCommand(turret)
-            ).withTimeout(1.5),
-            indexer.feedToShooterCommand().withTimeout(0.5)
-        ),
+    // STEP 1: Simultaneously spin up the flywheels/hood and aim the turret
+    Commands.parallel(
+        Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToHubMeters()), shooter),
+        new AutoAimTurretCommand(turret), indexer.feedToShooterCommand()
 
-        // IF TAG IS WRONG: Stay still and tell the driver why
-        Commands.print("SAFETY STOP: Target is not Hub Tag 9 or 10! Turret preserved."),
+    )
 
-        // THE CONDITION: Check before moving!
-        visionSwerveSystem::isTargetValid
-    ),
-
-    // ALWAYS stop the shooter at the end
-    Commands.runOnce(() -> shooter.stopShooter(), shooter),
-    Commands.runOnce(() -> shooter.startHoming(), shooter)
+    // STEP 2: Feed the note into the flywheels
+//  Commands.run(() -> indexer.runForward(), indexer)
+// STEP 3: Always shut down the shooter and home the hood when finished
 );
-
-
+private final Command stopShootRoutine = Commands.sequence(
+        Commands.run(() -> shooter.stopShooter(), shooter),
+        Commands.run(() -> indexer.stop(), indexer),
+        Commands.run(() -> shooter.startHoming(), shooter)
+    );
 
     private void configureBindings() {
         
+        driverXbox.y().onTrue(stopShootRoutine);
         
         // Default drive command with vision updates included
         drivebase.setDefaultCommand(drivebase.driveFieldOriented(driveAngularVelocity)
@@ -199,9 +192,9 @@ private final Command triggerShootRoutine = Commands.sequence(
         Command repeatedSequence = Commands.none(); 
         for (int i = 0; i < numberOfShots; i++) {
             repeatedSequence = repeatedSequence.andThen(
-                new AutoAimTurretCommand(turret).withTimeout(1.0),
-                indexer.feedToShooterCommand().withTimeout(0.5),
-                Commands.waitSeconds(0.25) 
+                new AutoAimTurretCommand(turret).withTimeout(1.5),
+                indexer.feedToShooterCommand().withTimeout(1.5),
+                Commands.waitSeconds(0.5) 
             );
         }
         return repeatedSequence.andThen(Commands.runOnce(() -> shooter.stopShooter()));

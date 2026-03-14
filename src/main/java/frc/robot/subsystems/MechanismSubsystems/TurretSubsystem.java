@@ -81,17 +81,5 @@ public class TurretSubsystem extends SubsystemBase {
     }
     @Override
     public void periodic() {
-    double ty = LimelightHelpers.getTY("limelight");
-    boolean hasTarget = LimelightHelpers.getTV("limelight");
-
-    // This sends it to the RioLog (The text list you see now)
-    System.out.println("Current TY: " + ty);
-
-    // This sends it to the Dashboard (The visual gauges)
-    SmartDashboard.putNumber("Limelight TY", ty);
-    
-    // This creates a "Centered" indicator
-    boolean isCentered = hasTarget && Math.abs(ty) < 1.0;
-    SmartDashboard.putBoolean("Target Centered", isCentered);
     }
 }

@@ -13,6 +13,7 @@ import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkBase.ResetMode;
 
@@ -22,11 +23,12 @@ public class ShooterSubsystem extends SubsystemBase {
     private final SparkMax rightFlywheel = new SparkMax(18, MotorType.kBrushless);
     private final SparkMax leftFlywheel = new SparkMax(19, MotorType.kBrushless);
     private final SparkMax hoodMotor = new SparkMax(20, MotorType.kBrushless); 
+    private final RelativeEncoder hoodRelativeEncoder = hoodMotor.getEncoder();
 
     // Sensors and control
-    private final DutyCycleEncoder hoodAbsoluteEncoder = new DutyCycleEncoder(0);
+    //private final DutyCycleEncoder hoodAbsoluteEncoder = new DutyCycleEncoder(0);
     private final DigitalInput hoodLimitSwitch = new DigitalInput(1); 
-    private final PIDController hoodPID = new PIDController(2.5, 0.0, 0.0);
+    private final PIDController hoodPID = new PIDController(0.1, 0.0, 0.0);
 
     // State Variables
     private double hoodMinAngle = 0.0; 
@@ -58,9 +60,10 @@ public class ShooterSubsystem extends SubsystemBase {
         leftFlywheel.configure(leftConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         // --- INTERPOLATION MAPS ---
-        powerMap.put(1.5, 0.45); 
-        powerMap.put(3.0, 0.75); 
-        powerMap.put(5.0, 1.00);
+        powerMap.clear();
+        powerMap.put(1.5, 0.70); 
+        // powerMap.put(3.0, 0.85); 
+        // powerMap.put(5.0, 1.00);
         
         startHoming();
     }
@@ -117,14 +120,16 @@ public class ShooterSubsystem extends SubsystemBase {
             } else {
                 hoodMotor.set(0);
 
-                double rawStartPos = hoodAbsoluteEncoder.get();
+                double rawStartPos = hoodRelativeEncoder.getPosition();
+                //hoodRelativeEncoder.setPosition(rawStartPos);
+                
                 hoodMinAngle = Math.round(rawStartPos * 100.0) / 100.0;
-                hoodMaxAngle = hoodMinAngle + 0.38;
-
+                hoodMaxAngle = hoodMinAngle + 57.57; // Safe to do 1.5 now!
+                // THE NEW MAP: Scaled to fit the larger 0.0 to 1.5 range
                 hoodMap.clear();
-                hoodMap.put(1.5, hoodMinAngle + 0.02);
-                hoodMap.put(3.0, hoodMinAngle + 0.15);
-                hoodMap.put(5.0, hoodMinAngle + 0.30);
+                hoodMap.put(1.5, hoodMinAngle + 0); // Close shot: Just slightly pitched up
+                // hoodMap.put(3.0, hoodMinAngle + 30); // Mid shot: Halfway up the 1.5 range
+                // hoodMap.put(5.0, hoodMinAngle + 40); // Far shot: High angle arc
                 
                 // Immediately set the default state to resting at the bottom
                 currentHoodTarget = hoodMinAngle;
@@ -132,22 +137,33 @@ public class ShooterSubsystem extends SubsystemBase {
                 isHomed = true;
                 isHoming = false;
             }
-        } 
-        
-        // --- 2. CONTINUOUS PID HEARTBEAT ---
-        // This guarantees the hood always tracks its target, even after commands finish.
+        }
+
+        // --- 2. THE MISSING HEARTBEAT (PID CONTROL) ---
+        // This is what actually forces the motor to move to your target!
         if (isHomed && !isHoming) {
-            double currentHoodPosition = hoodAbsoluteEncoder.get();
+            double currentHoodPosition = hoodRelativeEncoder.getPosition();
             
-            // Safety: If switch is pressed and we are trying to go lower, stop.
-            if (hoodLimitSwitch.get() && currentHoodTarget <= currentHoodPosition) {
-                hoodMotor.set(0);
-            } else {
+            // If the target is the absolute bottom, gently push until the switch clicks
+            if (currentHoodTarget <= hoodMinAngle + 0.01) {
+                if (!hoodLimitSwitch.get()) {
+                    hoodMotor.set(-0.15); 
+                } else {
+                    hoodMotor.set(0); 
+                }
+            } 
+            // Otherwise, use the PID to dynamically track the target angle
+            else {
                 double safeTarget = MathUtil.clamp(currentHoodTarget, hoodMinAngle, hoodMaxAngle);
                 double hoodMotorPower = hoodPID.calculate(currentHoodPosition, safeTarget);
                 
-                hoodMotorPower = MathUtil.clamp(hoodMotorPower, -0.3, 0.3); 
-                hoodMotor.set(hoodMotorPower);
+                // Safety: Stop if switch is pressed while moving down
+                if (hoodLimitSwitch.get() && hoodMotorPower < 0) {
+                    hoodMotor.set(0);
+                } else {
+                    hoodMotorPower = MathUtil.clamp(hoodMotorPower, -0.3, 0.3); 
+                    hoodMotor.set(hoodMotorPower);
+                }
             }
         }
 
@@ -156,6 +172,7 @@ public class ShooterSubsystem extends SubsystemBase {
         SmartDashboard.putBoolean("Hood Homed", isHomed);
         SmartDashboard.putBoolean("Switch Pressed", hoodLimitSwitch.get());
         SmartDashboard.putNumber("Hood Target", currentHoodTarget);
-        SmartDashboard.putNumber("Hood Current", hoodAbsoluteEncoder.get());
+        // SmartDashboard.putNumber("Hood Current", hoodAbsoluteEncoder.get());
+        SmartDashboard.putNumber("rawStartPos", hoodRelativeEncoder.getPosition());
     }
 }

@@ -7,7 +7,13 @@
         {
           "type": "path",
           "data": {
-            "pathName": "Blue Right Normal Path"
+            "pathName": "Blue Right Normal Path 1"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Blue Right Normal Path 2"
           }
         },
         {
