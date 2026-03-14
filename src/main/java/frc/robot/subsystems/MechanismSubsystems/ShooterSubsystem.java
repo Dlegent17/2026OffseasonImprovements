@@ -60,7 +60,7 @@ public class ShooterSubsystem extends SubsystemBase {
 
         // Interpolating Maps: Distance (m) to Power and Hood Angle
         powerMap.clear();
-        powerMap.put(1.5, 0.70); 
+        powerMap.put(2.3, 0.95); 
         // powerMap.put(3.0, 0.85); 
         // powerMap.put(5.0, 1.00);
         
@@ -68,15 +68,9 @@ public class ShooterSubsystem extends SubsystemBase {
     }
 
     public void stopShooterAndStartHoming() {
-        isHoming = true;
-        isHomed = false;
-
         rightFlywheel.set(0);
-        
-        // This acts as a "Return to Zero" state.
-        if (isHomed) {
-            currentHoodTarget = hoodMinAngle; 
-        }
+            startHoming();
+                
     }
 
     public void startHoming() {
@@ -136,7 +130,7 @@ public class ShooterSubsystem extends SubsystemBase {
                 hoodMinAngle = Math.round(rawStartPos * 100.0) / 100.0;
                 hoodMaxAngle = hoodMinAngle + 57.57; //Max angle is 57.57 motor rotations above the min angle, which we found through testing. This is how far the hood can actually move up before hitting the physical stop.
                 hoodMap.clear();
-                hoodMap.put(1.5, hoodMinAngle + 0); // Close shot: Just slightly pitched up
+                hoodMap.put(2.3, hoodMinAngle + 0); // Close shot: Just slightly pitched up
                 // hoodMap.put(3.0, hoodMinAngle + 30); // Mid shot: Halfway up the 1.5 range
                 // hoodMap.put(5.0, hoodMinAngle + 40); // Far shot: High angle arc
                 
