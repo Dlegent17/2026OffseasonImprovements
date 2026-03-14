@@ -25,11 +25,11 @@ public class IndexerSubsystem extends SubsystemBase {
     }
 
     public void runForward() {
-        indexerMotor.set(-.1); 
+        indexerMotor.set(-.5); 
     }
 
     public void runReverse() {        
-        indexerMotor.set(.1); 
+        indexerMotor.set(.5); 
     }
 
     public void stop() {

@@ -119,10 +119,11 @@ private final Command triggerShootRoutine = Commands.sequence(
 // STEP 3: Always shut down the shooter and home the hood when finished
 );
 private final Command stopShootRoutine = Commands.sequence(
-Commands.parallel(Commands.run(() -> shooter.stopShooter(), shooter),
-        Commands.run(() -> indexer.stop(), indexer),
+Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shooter),
+        Commands.run(() -> indexer.stop(), indexer)//,
         // Commands.run(() -> intake.stowIntakeCommand(), intake),
-        Commands.run(() -> shooter.startHoming(), shooter))
+        //Commands.run(() -> shooter.startHoming(), shooter)
+        )
     );
 
     // private final Command deployandIntakeCommand = Commands.sequence(

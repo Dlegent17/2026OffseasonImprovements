@@ -67,6 +67,18 @@ public class ShooterSubsystem extends SubsystemBase {
         startHoming();
     }
 
+    public void stopShooterAndStartHoming() {
+        isHoming = true;
+        isHomed = false;
+
+        rightFlywheel.set(0);
+        
+        // This acts as a "Return to Zero" state.
+        if (isHomed) {
+            currentHoodTarget = hoodMinAngle; 
+        }
+    }
+
     public void startHoming() {
         isHoming = true;
         isHomed = false; 
