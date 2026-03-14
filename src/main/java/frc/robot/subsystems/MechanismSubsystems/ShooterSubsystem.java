@@ -1,12 +1,12 @@
 package frc.robot.subsystems.MechanismSubsystems;
 
-import edu.wpi.first.wpilibj2.command.Command;
+//import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.LimelightHelpers;
+//import frc.robot.LimelightHelpers;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.wpilibj.DutyCycleEncoder;
+//import edu.wpi.first.wpilibj.DutyCycleEncoder;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import com.revrobotics.spark.SparkMax;
@@ -19,37 +19,36 @@ import com.revrobotics.spark.SparkBase.ResetMode;
 
 public class ShooterSubsystem extends SubsystemBase {
     
-    // Motors
+    // Motors for the flywheel and hood. The flywheel is a simple master-follower setup, while the hood has its own motor and encoder for precise control.
     private final SparkMax rightFlywheel = new SparkMax(18, MotorType.kBrushless);
     private final SparkMax leftFlywheel = new SparkMax(19, MotorType.kBrushless);
     private final SparkMax hoodMotor = new SparkMax(20, MotorType.kBrushless); 
     private final RelativeEncoder hoodRelativeEncoder = hoodMotor.getEncoder();
 
-    // Sensors and control
+    // Sensors and control components for the hood. We are using a relative encoder on the motor and a limit switch at the bottom to establish our zero point.
     //private final DutyCycleEncoder hoodAbsoluteEncoder = new DutyCycleEncoder(0);
     private final DigitalInput hoodLimitSwitch = new DigitalInput(1); 
     private final PIDController hoodPID = new PIDController(0.1, 0.0, 0.0);
 
-    // State Variables
+    // State Variables for Homing and Dynamic Control
     private double hoodMinAngle = 0.0; 
     private double hoodMaxAngle = 0.0; 
     private boolean isHoming = false; 
     private boolean isHomed = false; 
-    
-    // THE FIX: Add a variable to track where the hood SHOULD be at all times
     private double currentHoodTarget = 0.0; 
 
-    // Interpolating Maps
+    // Interpolating Maps for dynamic adjustments based on distance to the target. These will be populated after homing to ensure we have accurate angle limits.
     private final InterpolatingDoubleTreeMap powerMap = new InterpolatingDoubleTreeMap();
     private final InterpolatingDoubleTreeMap hoodMap = new InterpolatingDoubleTreeMap();
     
-    public ShooterSubsystem() {
-        // --- HOOD CONFIG ---
+    @SuppressWarnings("removal")
+	public ShooterSubsystem() {
+        // Hood Configuration: Brake Mode and Current Limit
         SparkMaxConfig hoodConfig = new SparkMaxConfig();
         hoodConfig.idleMode(IdleMode.kBrake);
         hoodMotor.configure(hoodConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-        // --- FLYWHEEL CONFIG ---
+        // Wheel Configuration: Inverted and Coast Mode
         SparkMaxConfig rightConfig = new SparkMaxConfig();
         rightConfig.inverted(true); 
         rightConfig.idleMode(IdleMode.kCoast); 
@@ -59,7 +58,7 @@ public class ShooterSubsystem extends SubsystemBase {
         leftConfig.follow(rightFlywheel, true); 
         leftFlywheel.configure(leftConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-        // --- INTERPOLATION MAPS ---
+        // Interpolating Maps: Distance (m) to Power and Hood Angle
         powerMap.clear();
         powerMap.put(1.5, 0.70); 
         // powerMap.put(3.0, 0.85); 
@@ -86,7 +85,7 @@ public class ShooterSubsystem extends SubsystemBase {
     public void stopShooter() {
         rightFlywheel.set(0);
         
-        // This acts as your "Return to Zero" state.
+        // This acts as a "Return to Zero" state.
         if (isHomed) {
             currentHoodTarget = hoodMinAngle; 
         }
@@ -113,7 +112,7 @@ public class ShooterSubsystem extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // --- 1. HOMING LOGIC ---
+        // Homing Logic: This runs first to establish the zero point and limits before any PID control takes over.
         if (isHoming && !isHomed) {
             if (!hoodLimitSwitch.get()) {
                 hoodMotor.set(-0.2); 
@@ -122,10 +121,8 @@ public class ShooterSubsystem extends SubsystemBase {
 
                 double rawStartPos = hoodRelativeEncoder.getPosition();
                 //hoodRelativeEncoder.setPosition(rawStartPos);
-                
                 hoodMinAngle = Math.round(rawStartPos * 100.0) / 100.0;
-                hoodMaxAngle = hoodMinAngle + 57.57; // Safe to do 1.5 now!
-                // THE NEW MAP: Scaled to fit the larger 0.0 to 1.5 range
+                hoodMaxAngle = hoodMinAngle + 57.57; //Max angle is 57.57 motor rotations above the min angle, which we found through testing. This is how far the hood can actually move up before hitting the physical stop.
                 hoodMap.clear();
                 hoodMap.put(1.5, hoodMinAngle + 0); // Close shot: Just slightly pitched up
                 // hoodMap.put(3.0, hoodMinAngle + 30); // Mid shot: Halfway up the 1.5 range
@@ -139,8 +136,8 @@ public class ShooterSubsystem extends SubsystemBase {
             }
         }
 
-        // --- 2. THE MISSING HEARTBEAT (PID CONTROL) ---
-        // This is what actually forces the motor to move to your target!
+        // PID Control Logic: This runs after homing is complete to maintain the hood angle and adjust flywheel power based on distance.
+        // This is what actually forces the motor to move to your targett angle and keeps it there, even if the robot is shaking or the battery is low or whatever.
         if (isHomed && !isHoming) {
             double currentHoodPosition = hoodRelativeEncoder.getPosition();
             
@@ -169,9 +166,9 @@ public class ShooterSubsystem extends SubsystemBase {
 
         // Dashboard Logging
         SmartDashboard.putNumber("FW Output", rightFlywheel.get());
-        SmartDashboard.putBoolean("Hood Homed", isHomed);
-        SmartDashboard.putBoolean("Switch Pressed", hoodLimitSwitch.get());
-        SmartDashboard.putNumber("Hood Target", currentHoodTarget);
+        // SmartDashboard.putBoolean("Hood Homed", isHomed);
+        // SmartDashboard.putBoolean("Switch Pressed", hoodLimitSwitch.get());
+       // SmartDashboard.putNumber("Hood Target", currentHoodTarget);
         // SmartDashboard.putNumber("Hood Current", hoodAbsoluteEncoder.get());
         SmartDashboard.putNumber("rawStartPos", hoodRelativeEncoder.getPosition());
     }

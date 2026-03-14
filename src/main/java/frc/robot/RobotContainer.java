@@ -43,10 +43,11 @@ public class RobotContainer {
     public final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve"));
     public final ShooterSubsystem shooter = new ShooterSubsystem();
     public final TurretSubsystem turret = new TurretSubsystem();
-    // public final IntakeSubsystem intake = new IntakeSubsystem();
+   // public final IntakeSubsystem intake = new IntakeSubsystem();
     public final IndexerSubsystem indexer = new IndexerSubsystem();
     private final VisionSwerveSystem visionSwerveSystem = new VisionSwerveSystem(drivebase.getPoseEstimator(), turret);    
-    private final String limelightName = "limelight";
+    @SuppressWarnings("unused")
+	private final String limelightName = "limelight";
     // --- Controllers & Choosers ---
     final CommandXboxController driverXbox = new CommandXboxController(0);
     private final SendableChooser<Command> autoChooser;
@@ -118,13 +119,19 @@ private final Command triggerShootRoutine = Commands.sequence(
 // STEP 3: Always shut down the shooter and home the hood when finished
 );
 private final Command stopShootRoutine = Commands.sequence(
-        Commands.run(() -> shooter.stopShooter(), shooter),
+Commands.parallel(Commands.run(() -> shooter.stopShooter(), shooter),
         Commands.run(() -> indexer.stop(), indexer),
-        Commands.run(() -> shooter.startHoming(), shooter)
+        // Commands.run(() -> intake.stowIntakeCommand(), intake),
+        Commands.run(() -> shooter.startHoming(), shooter))
     );
 
+    // private final Command deployandIntakeCommand = Commands.sequence(
+    //         Commands.run(() -> intake.getPivotDown(), intake),
+    //         Commands.run(() -> intake.runIntakeCommand(), intake)
+    // );
+
     private void configureBindings() {
-        
+        // driverXbox.leftTrigger().onTrue(deployandIntakeCommand);
         driverXbox.y().onTrue(stopShootRoutine);
         
         // Default drive command with vision updates included
@@ -134,8 +141,8 @@ private final Command stopShootRoutine = Commands.sequence(
                 drivebase.getTurnRate()
             ), visionSwerveSystem)));
 
-        // A Button: Smart Zero Gyro & Pose based on Alliance Color
-        driverXbox.a().onTrue(Commands.runOnce(() -> {
+        // Start Button: Smart Zero Gyro & Pose based on Alliance Color
+        driverXbox.start().onTrue(Commands.runOnce(() -> {
             var alliance = DriverStation.getAlliance();
             double xPos = (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) ? 12.51 : 4.03;
             double resetAngle = (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) ? 180.0 : 0.0;
@@ -145,7 +152,6 @@ private final Command stopShootRoutine = Commands.sequence(
                 Rotation2d.fromDegrees(resetAngle)
             ));
         }));
-        
         // B Button: Snap To Tag (Chassis Aim)
         driverXbox.b().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
         //driverXbox.b().onTrue(Commands.runOnce(() -> shooter.toggleShooter()));
@@ -155,8 +161,6 @@ private final Command stopShootRoutine = Commands.sequence(
         // Right/Left Bumpers: Manual Turret Turn
         driverXbox.rightBumper().whileTrue(turret.turnRightCommand());
         driverXbox.leftBumper().whileTrue(turret.turnLeftCommand());
-
-        // --- THE ADDITION: X Button - Manual Force Pose Reset ---
         // This allows the driver to manually fix a "lost" robot icon by looking at a tag.
         driverXbox.x().onTrue(Commands.runOnce(() -> {
             Pose2d visionPose = visionSwerveSystem.getForceResetPose();
@@ -168,22 +172,14 @@ private final Command stopShootRoutine = Commands.sequence(
             }
         })); 
 
-        // Ferry Pass Sequence (kept for your reference)
         Command ferrySequence = Commands.sequence(
             Commands.parallel(
                 Commands.run(() -> shooter.setFerryMode(), shooter), 
-                new AutoAimTurretCommand(turret)
-            ).withTimeout(1.0),
-            
-            Commands.parallel(
-                Commands.run(() -> shooter.setFerryMode(), shooter),
-                indexer.feedToShooterCommand()
-            ).withTimeout(0.5),
-
-            Commands.runOnce(() -> shooter.stopShooter(), shooter)
+                new AutoAimTurretCommand(turret), indexer.feedToShooterCommand()
+            )
         );
         
-        // driverXbox.y().onTrue(ferrySequence);
+         driverXbox.a().onTrue(ferrySequence);
     }
 
     // --- Helper Methods ---

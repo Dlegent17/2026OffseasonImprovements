@@ -1,10 +1,8 @@
 package frc.robot.subsystems.MechanismSubsystems;
-
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+// import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.LimelightHelpers;
-
+// import frc.robot.LimelightHelpers;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkMaxConfig;
@@ -15,15 +13,14 @@ import com.revrobotics.spark.SparkBase.PersistMode;
 public class TurretSubsystem extends SubsystemBase {
     private final SparkMax turretMotor;
 
-    // REPLACE 100.0 WITH YOUR ACTUAL TURRET GEAR RATIO
-    // Example: If it takes 100 motor spins for 1 turret spin, ratio is 100.0
+    // The gear ratio of the turret. This is how many times the motor rotates for one full rotation of the turret.
     private final double TURRET_GEAR_RATIO = 50.0;
-    // bacon
-    // --- DEFINE YOUR LIMITS ONCE, IN DEGREES ---
+    // Limits for the turret in degrees. These are the physical limits of how far the turret can rotate in either direction.
     private static final double FORWARD_LIMIT_DEGREES =90.0; // max rightward rotation
     private static final double REVERSE_LIMIT_DEGREES = -90.0; // max leftward rotation
 
-    public TurretSubsystem() {
+    @SuppressWarnings("removal")
+	public TurretSubsystem() {
         turretMotor = new SparkMax(24, MotorType.kBrushless);
         SparkMaxConfig turretConfig = new SparkMaxConfig();
 
@@ -45,7 +42,7 @@ public class TurretSubsystem extends SubsystemBase {
     public void setTurretSpeed(double speed) {
         double currentAngle = getTurretAngleDegrees();
 
-        SmartDashboard.putNumber("Turret Realtime Angle", currentAngle);
+        //SmartDashboard.putNumber("Turret Realtime Angle", currentAngle);
 
         // Software limits using the same degree constants as the hardware limits.
         // These act as a secondary safety layer on top of the SparkMax soft limits.
