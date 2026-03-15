@@ -29,7 +29,7 @@ public class IndexerSubsystem extends SubsystemBase {
     }
 
     public void runReverse() {        
-        indexerMotor.set(1); 
+        indexerMotor.set(1.0); 
     }
 
     public void stop() {

@@ -19,7 +19,6 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-
 // Commands & Constants
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.AutoAimTurretCommand;
@@ -28,11 +27,9 @@ import frc.robot.subsystems.MechanismSubsystems.IndexerSubsystem;
 import frc.robot.subsystems.MechanismSubsystems.IntakeSubsystem;
 import frc.robot.subsystems.MechanismSubsystems.ShooterSubsystem;
 import frc.robot.subsystems.MechanismSubsystems.TurretSubsystem;
-
 // Subsystems
 import frc.robot.subsystems.SwerveSubsystems.SwerveSubsystem;
 import frc.robot.subsystems.SwerveSubsystems.VisionSwerveSystem;
-
 // Third-Party Libraries
 import swervelib.SwerveInputStream;
 
@@ -43,7 +40,7 @@ public class RobotContainer {
     public final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve"));
     public final ShooterSubsystem shooter = new ShooterSubsystem();
     public final TurretSubsystem turret = new TurretSubsystem();
-   // public final IntakeSubsystem intake = new IntakeSubsystem();
+   public final IntakeSubsystem intake = new IntakeSubsystem();
     public final IndexerSubsystem indexer = new IndexerSubsystem();
     private final VisionSwerveSystem visionSwerveSystem = new VisionSwerveSystem(drivebase.getPoseEstimator(), turret);    
     @SuppressWarnings("unused")
@@ -114,25 +111,25 @@ private final Command triggerShootRoutine = Commands.sequence(
 
     )
 
-    // STEP 2: Feed the note into the flywheels
-//  Commands.run(() -> indexer.runForward(), indexer)
-// STEP 3: Always shut down the shooter and home the hood when finished
+    
 );
 private final Command stopShootRoutine = Commands.sequence(
 Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shooter),
-        Commands.run(() -> indexer.stop(), indexer)//,
-        // Commands.run(() -> intake.stowIntakeCommand(), intake),
-        //Commands.run(() -> shooter.startHoming(), shooter)
+        Commands.run(() -> indexer.stop(), indexer),
+        Commands.run(() -> intake.stowIntakeCommand(), intake)
         )
     );
 
-    // private final Command deployandIntakeCommand = Commands.sequence(
-    //         Commands.run(() -> intake.getPivotDown(), intake),
-    //         Commands.run(() -> intake.runIntakeCommand(), intake)
-    // );
+     private final Command deployandIntakeCommand = intake.runIntakeCommand();
+     
+     /*
+     Commands.sequence(
+             //Commands.run(() -> intake.getPivotDown(), intake),
+             Commands.run(() -> intake.runIntakeCommand(), intake)
+     );*/
 
     private void configureBindings() {
-        // driverXbox.leftTrigger().onTrue(deployandIntakeCommand);
+        driverXbox.leftTrigger().onTrue(deployandIntakeCommand);
         driverXbox.y().onTrue(stopShootRoutine);
         
         // Default drive command with vision updates included
@@ -153,17 +150,16 @@ Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shoote
                 Rotation2d.fromDegrees(resetAngle)
             ));
         }));
-        // B Button: Snap To Tag (Chassis Aim)
-        driverXbox.b().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
-        //driverXbox.b().onTrue(Commands.runOnce(() -> shooter.toggleShooter()));
-        // In configureBindings()
-        driverXbox.rightTrigger(0.5).onTrue(triggerShootRoutine);
+        
+Command ferrySequence = Commands.sequence(
+            Commands.parallel(
+                Commands.run(() -> shooter.setFerryMode(), shooter), 
+                new AutoAimTurretCommand(turret), indexer.feedToShooterCommand()
+            )
+        );
+        
 
-        // Right/Left Bumpers: Manual Turret Turn
-        driverXbox.rightBumper().whileTrue(turret.turnRightCommand());
-        driverXbox.leftBumper().whileTrue(turret.turnLeftCommand());
-        // This allows the driver to manually fix a "lost" robot icon by looking at a tag.
-        driverXbox.x().onTrue(Commands.runOnce(() -> {
+         driverXbox.x().onTrue(Commands.runOnce(() -> {
             Pose2d visionPose = visionSwerveSystem.getForceResetPose();
             if (visionPose != null) {
                 drivebase.resetOdometry(visionPose);
@@ -172,16 +168,18 @@ Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shoote
                 System.out.println("Reseed Failed: No Tags Visible");
             }
         })); 
-
-        Command ferrySequence = Commands.sequence(
-            Commands.parallel(
-                Commands.run(() -> shooter.setFerryMode(), shooter), 
-                new AutoAimTurretCommand(turret), indexer.feedToShooterCommand()
-            )
-        );
-        
+         driverXbox.rightBumper().whileTrue(turret.turnRightCommand());
+         driverXbox.leftBumper().whileTrue(turret.turnLeftCommand());
+         driverXbox.b().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
+         driverXbox.rightTrigger().onTrue(triggerShootRoutine);
          driverXbox.a().onTrue(ferrySequence);
+         driverXbox.povUp().whileTrue(Commands.run(() -> indexer.reverseIndexerCommand(), indexer));
+         driverXbox.povDown().onTrue(Commands.runOnce(() -> intake.stowIntakeCommand(), intake));
+         driverXbox.povLeft().onTrue(Commands.runOnce(() -> shooter.startHoming(), shooter));
+         driverXbox.povRight().onTrue(Commands.runOnce(() -> shooter.stopShooter(), shooter));
+         
     }
+
 
     // --- Helper Methods ---
     

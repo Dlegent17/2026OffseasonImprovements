@@ -98,10 +98,12 @@ public class IntakeSubsystem extends SubsystemBase {
      * The soft limits in setPivotSpeed() will automatically stop the arm when it hits the floor!
      */
     public Command runIntakeCommand() {
-        return this.run(() -> {
-            setRollerSpeed(0.8); // Spin IN
+        return this.runOnce(() -> 
+            //frontRollerMotor.set(0.9)
+            backBeltMotor.set(0.9)
+            //setRollerSpeed(0.8); // Spin IN
             
-        });
+        );
     }
 
     public Command getPivotDown() {

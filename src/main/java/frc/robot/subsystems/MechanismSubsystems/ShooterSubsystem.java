@@ -60,7 +60,7 @@ public class ShooterSubsystem extends SubsystemBase {
 
         // Interpolating Maps: Distance (m) to Power and Hood Angle
         powerMap.clear();
-        powerMap.put(2.3, 0.95); 
+        powerMap.put(2.3, 1.0); 
         // powerMap.put(3.0, 0.85); 
         // powerMap.put(5.0, 1.00);
         
