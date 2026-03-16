@@ -26,18 +26,18 @@ public class IntakeSubsystem extends SubsystemBase {
     // PLACE HOLDER ANGLE LIMITS - These are just guesses for now since we don't have the real robot or encoder values yet.
     // 0 degrees is theoretical fully stowed (up)
     // 90 degrees is theoretical fully deployed (down to the floor)
-    private final double MAX_ANGLE_UP = 5.0;
-    private final double MIN_ANGLE_DOWN = 85.0;
+    private final double MAX_ANGLE_UP = 354.0;
+    private final double MIN_ANGLE_DOWN = 155.0;
 
     @SuppressWarnings("removal")
     // Constructor initializes motors and encoder, and configures motor settings like current limits and idle modes.
     public IntakeSubsystem() {
-        frontRollerMotor = new SparkMax(15, MotorType.kBrushless);
-        backBeltMotor = new SparkMax(16, MotorType.kBrushless);
+        frontRollerMotor = new SparkMax(16, MotorType.kBrushless);
+        backBeltMotor = new SparkMax(15, MotorType.kBrushless);
         pivotMotor = new SparkMax(17, MotorType.kBrushless);
 
         // Initialize Encoder on roboRIO DIO Port 0
-        pivotEncoder = new DutyCycleEncoder(0);
+        pivotEncoder = new DutyCycleEncoder(2);
 
         // 
         SparkMaxConfig rollerConfig = new SparkMaxConfig();
@@ -76,7 +76,7 @@ public class IntakeSubsystem extends SubsystemBase {
 // Set the speed of both the front roller and back belt motors at the same time for convenience.
     public void setRollerSpeed(double speed) {
         frontRollerMotor.set(speed);
-        backBeltMotor.set(speed);
+        // backBeltMotor.set(speed);
     }
 // A simple helper method to stop all intake motors.
     public void stopRollers() {
@@ -85,11 +85,11 @@ public class IntakeSubsystem extends SubsystemBase {
     }
 
     public Command intakeInCommand() {
-        return this.runEnd(() -> setRollerSpeed(0.8), this::stopRollers);
+        return this.runEnd(() -> setRollerSpeed(0.1), this::stopRollers);
     }
 
     public Command intakeOutCommand() {
-        return this.runEnd(() -> setRollerSpeed(-0.6), this::stopRollers);
+        return this.runEnd(() -> setRollerSpeed(-0.1), this::stopRollers);
     }
 
     /**
@@ -99,17 +99,14 @@ public class IntakeSubsystem extends SubsystemBase {
      */
     public Command runIntakeCommand() {
         return this.runOnce(() -> 
-            //frontRollerMotor.set(0.9)
-            backBeltMotor.set(0.9)
-            //setRollerSpeed(0.8); // Spin IN
-            
+            frontRollerMotor.set(0.9)
         );
     }
 
     public Command getPivotDown() {
         return this.run(() -> {
-            setPivotSpeed(-0.4);       
-             }).until(() -> getPivotAngle() >= MIN_ANGLE_DOWN - 2.0); // Stop a little early to avoid hitting the floor hard!
+            setPivotSpeed(-0.1);       
+             }).until(() -> getPivotAngle() >= MIN_ANGLE_DOWN - 1.0); // Stop a little early to avoid hitting the floor hard!
     }
 
     /**
@@ -118,9 +115,10 @@ public class IntakeSubsystem extends SubsystemBase {
      */
     public Command stowIntakeCommand() {
         return this.run(() -> {
-            setPivotSpeed(0.4);  // Drive UP (Positive)
-            setRollerSpeed(0.0); // Stop rollers
-        }).until(() -> getPivotAngle() <= MAX_ANGLE_UP + 2.0); // Stop the command when fully stowed
+             setPivotSpeed(0.1);  // Drive UP (Positive)
+            frontRollerMotor.set(0.0); // Stop rollers
+        })
+        .until(() -> getPivotAngle() <= MAX_ANGLE_UP + 1.0); // Stop the command when fully stowed
     }
 
     /**
