@@ -120,11 +120,8 @@ Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shoote
         )
     );
 
-     private final Command deployandIntakeCommand = 
-     Commands.sequence(
-     Commands.run(() -> intake.getPivotDown(), intake),
-     Commands.run(() -> intake.runIntakeCommand(), intake)
-  );
+    private final Command deployandIntakeCommand = 
+      intake.getPivotDown().andThen(intake.runIntakeCommand());
 
     private void configureBindings() {
         driverXbox.leftTrigger().onTrue(deployandIntakeCommand);

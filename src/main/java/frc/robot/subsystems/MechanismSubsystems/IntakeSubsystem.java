@@ -32,11 +32,11 @@ public class IntakeSubsystem extends SubsystemBase {
     @SuppressWarnings("removal")
     // Constructor initializes motors and encoder, and configures motor settings like current limits and idle modes.
     public IntakeSubsystem() {
-        frontRollerMotor = new SparkMax(16, MotorType.kBrushless);
-        backBeltMotor = new SparkMax(15, MotorType.kBrushless);
+        frontRollerMotor = new SparkMax(15, MotorType.kBrushless);
+        backBeltMotor = new SparkMax(16, MotorType.kBrushless);
         pivotMotor = new SparkMax(17, MotorType.kBrushless);
 
-        // Initialize Encoder on roboRIO DIO Port 0
+        // Initialize Encoder on roboRIO DIO Port 2
         pivotEncoder = new DutyCycleEncoder(2);
 
         // 
@@ -85,11 +85,11 @@ public class IntakeSubsystem extends SubsystemBase {
     }
 
     public Command intakeInCommand() {
-        return this.runEnd(() -> setRollerSpeed(0.1), this::stopRollers);
+        return this.runEnd(() -> setRollerSpeed(0.3), this::stopRollers);
     }
 
     public Command intakeOutCommand() {
-        return this.runEnd(() -> setRollerSpeed(-0.1), this::stopRollers);
+        return this.runEnd(() -> setRollerSpeed(0.3), this::stopRollers);
     }
 
     /**
@@ -105,8 +105,15 @@ public class IntakeSubsystem extends SubsystemBase {
 
     public Command getPivotDown() {
         return this.run(() -> {
-            setPivotSpeed(-0.1);       
-             }).until(() -> getPivotAngle() >= MIN_ANGLE_DOWN - 1.0); // Stop a little early to avoid hitting the floor hard!
+            setPivotSpeed(0.3);       
+             }).until(() -> getPivotAngle() >= MIN_ANGLE_DOWN - 5.0); // Stop a little early to avoid hitting the floor hard!
+    }
+
+    public Command runIntakeandgetPivotDownCommand(){
+        return this.run(() -> {
+            getPivotDown();
+            runIntakeCommand();
+        });
     }
 
     /**

@@ -33,7 +33,7 @@ public class Robot extends TimedRobot
   {
     m_robotContainer = new RobotContainer();
     disabledTimer = new Timer();
-
+    System.out.println("XXXX");
     if (isSimulation())
     {
       DriverStation.silenceJoystickConnectionWarning(true);
