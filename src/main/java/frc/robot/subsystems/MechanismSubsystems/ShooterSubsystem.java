@@ -113,11 +113,7 @@ public class ShooterSubsystem extends SubsystemBase {
 
     public void setFerryMode() {
         rightFlywheel.set(1.0);
-        currentHoodTarget = hoodMaxAngle; 
-    }
-
-    @Override
-    public void periodic() {
+        currentHoodTarget = (hoodMaxAngle - 10);
         // Homing Logic: This runs first to establish the zero point and limits before any PID control takes over.
         if (isHoming && !isHomed) {
             if (!hoodLimitSwitch.get()) {

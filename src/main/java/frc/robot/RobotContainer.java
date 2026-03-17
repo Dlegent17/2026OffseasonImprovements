@@ -104,6 +104,7 @@ public class RobotContainer {
     }
 
 private final Command triggerShootRoutine = Commands.sequence(
+        Commands.runOnce(() -> visionSwerveSystem.enableTagLock()),
     // STEP 1: Simultaneously spin up the flywheels/hood and aim the turret
     Commands.parallel(
         Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToHubMeters()), shooter),
@@ -114,6 +115,7 @@ private final Command triggerShootRoutine = Commands.sequence(
     
 );
 private final Command stopShootRoutine = Commands.sequence(
+        Commands.runOnce(() -> visionSwerveSystem.clearTagLock()),
 Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shooter),
         Commands.run(() -> indexer.stop(), indexer),
         Commands.run(() -> intake.stowIntakeCommand(), intake)
@@ -121,11 +123,15 @@ Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shoote
     );
 
     private final Command deployandIntakeCommand = 
-      intake.runIntakeCommand();
+      Commands.run(() -> intake.runIntake(), intake);
+
+      private final Command stopIntakeCommand = 
+      Commands.run(() -> intake.stopIntake(), intake);
 
     private void configureBindings() {
-        driverXbox.leftTrigger().onTrue(deployandIntakeCommand);
-        driverXbox.y().onTrue(stopShootRoutine);
+        driverXbox.leftTrigger().whileTrue(deployandIntakeCommand);
+        driverXbox.y().onTrue(stopIntakeCommand);
+        //driverXbox.y().onTrue(stopShootRoutine);
         
         // Default drive command with vision updates included
         drivebase.setDefaultCommand(drivebase.driveFieldOriented(driveAngularVelocity)

@@ -26,8 +26,8 @@ public class IntakeSubsystem extends SubsystemBase {
     // PLACE HOLDER ANGLE LIMITS - These are just guesses for now since we don't have the real robot or encoder values yet.
     // 0 degrees is theoretical fully stowed (up)
     // 90 degrees is theoretical fully deployed (down to the floor)
-    private final double MAX_ANGLE_UP = 354.0;
-    private final double MIN_ANGLE_DOWN = 155.0;
+    private final double MAX_ANGLE_UP = 235.0;
+    private final double MIN_ANGLE_DOWN = 50.0;
 
     @SuppressWarnings("removal")
     // Constructor initializes motors and encoder, and configures motor settings like current limits and idle modes.
@@ -77,7 +77,7 @@ public class IntakeSubsystem extends SubsystemBase {
 // Set the speed of both the front roller and back belt motors at the same time for convenience.
     public void setRollerSpeed(double speed) {
         frontRollerMotor.set(speed);
-        // backBeltMotor.set(speed);
+        backBeltMotor.set(speed);
     }
 // A simple helper method to stop all intake motors.
     public void stopRollers() {
@@ -85,12 +85,24 @@ public class IntakeSubsystem extends SubsystemBase {
         backBeltMotor.set(0.0);
     }
 
+    public void setFrontRollerSpeed(double speed) {
+        frontRollerMotor.set(speed);
+    }
+
+    public void setPivotSpeed(double speed) {
+        pivotMotor.set(speed);
+    }
+
+    public Command tempIntakeAndFloorCommand() {
+        return this.runEnd(() -> {setFrontRollerSpeed(-0.7);}, this::stopRollers);
+    }
+
     public Command intakeInCommand() {
-        return this.runEnd(() -> setRollerSpeed(0.3), this::stopRollers);
+        return this.runEnd(() -> setPivotSpeed(0.3), this::stopRollers);
     }
 
     public Command intakeOutCommand() {
-        return this.runEnd(() -> setRollerSpeed(0.3), this::stopRollers);
+        return this.runEnd(() -> setPivotSpeed(-0.3), this::stopRollers);
     }
 
     /**
@@ -98,36 +110,46 @@ public class IntakeSubsystem extends SubsystemBase {
      * Drops the intake to the floor and spins the rollers.
      * The soft limits in setPivotSpeed() will automatically stop the arm when it hits the floor!
      */
-    public Command runIntakeCommand() {
-        return this.runOnce(() -> 
-            frontRollerMotor.set(-0.7)
-        );
-    }
+
+     public void runIntake() {
+        // frontRollerMotor.set(-0.7);
+        backBeltMotor.set(-0.2);
+     }
+
+     public void stopIntake() {
+        // frontRollerMotor.set(-0.7);
+        backBeltMotor.set(0.0);
+     }
+
+   
 
     public Command getPivotDown() {
         return this.run(() -> {
-            pivotMotor.set(-0.2);       
-             }).until(() -> getPivotAngle() >= MIN_ANGLE_DOWN - 5.0).andThen(() -> {pivotMotor.set(0.0);}); // Stop a little early to avoid hitting the floor hard!
+            pivotMotor.set(-0.5);       
+             }).until(() -> getPivotAngle() <= MIN_ANGLE_DOWN).andThen(() -> {pivotMotor.set(0.0);}); // Stop a little early to avoid hitting the floor hard!
     }
 
-    public Command runIntakeandgetPivotDownCommand(){
+    public Command runIntakeandgetPivotDown(){
         return this.run(() -> {
             getPivotDown();
-            runIntakeCommand();
+            runIntake();
         });
     }
+
+    
 
     /**
      * Pulls the intake back up into the robot and stops the rollers.
      * It finishes automatically when the absolute encoder says it has reached the top.
      */
     public Command stowIntakeCommand() {
+        // Stop rollers and drive the pivot up until the encoder reports the stowed angle, then stop the pivot.
         return this.run(() -> {
-            frontRollerMotor.set(0.0);
-             pivotMotor.set(0.2);  // Drive UP (Positive)
-             // Stop rollers
-        })
-        .until(() -> getPivotAngle() <= MAX_ANGLE_UP + 1.0).andThen(() -> {pivotMotor.set(0.0);}); // Stop the command when fully stowed
+                //frontRollerMotor.set(0.0);
+                pivotMotor.set(0.5);  // Drive UP (Positive)
+            })
+            .until(() -> getPivotAngle() >= MAX_ANGLE_UP)
+            .andThen(() -> { pivotMotor.set(0.0); });
     }
 
 

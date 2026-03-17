@@ -21,6 +21,37 @@ public class VisionSwerveSystem extends SubsystemBase {
     private final String limelightName = "limelight"; 
 
     private final Translation3d robotCenterToTurretBase = new Translation3d(0.000, 0.191, 0.310); 
+    // Get the latest tag ID that Limelight sees
+double currentTid = LimelightHelpers.getFiducialID(limelightName);
+
+// Get the X/Y offsets from Limelight
+double tx = LimelightHelpers.getTX(limelightName);
+double ty = LimelightHelpers.getTY(limelightName);
+
+// Check if Limelight actually sees a target
+boolean tv = LimelightHelpers.getTV(limelightName);
+    private double lockedTagID = -1;
+private boolean hasLock = false;
+
+public void enableTagLock() {
+    lockedTagID = -1;
+    hasLock = false;
+}
+
+public void clearTagLock() {
+    lockedTagID = -1;
+    hasLock = false;
+}
+
+public double getLockedTX() {
+    if (!hasLock) return 0;
+    return LimelightHelpers.getTX(limelightName);
+}
+
+public double getLockedTY() {
+    if (!hasLock) return 0;
+    return LimelightHelpers.getTY(limelightName);
+}
 
     // THE FIX: Roll is set to 0.0 because the Limelight Web UI is handling the 90-degree portrait rotation!
 private final Transform3d turretBaseToCamera = new Transform3d(
@@ -65,6 +96,26 @@ private final Transform3d turretBaseToCamera = new Transform3d(
         if (isTrustworthy) {
             poseEstimator.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
         }
+        boolean tv = LimelightHelpers.getTV(limelightName);
+double currentTid = LimelightHelpers.getFiducialID(limelightName);
+
+if (!tv) {
+    clearTagLock(); // no target → unlock
+    return;
+}
+
+// Lock logic
+if (!hasLock && currentTid != -1) {
+    lockedTagID = currentTid; // first tag seen → lock it
+    hasLock = true;
+}
+
+// If locked, ignore all other tags
+if (hasLock && currentTid != lockedTagID) {
+    return;
+}
+
+// Now you can safely use getLockedTX() / getLockedTY() for aiming
     }
 
     /**
