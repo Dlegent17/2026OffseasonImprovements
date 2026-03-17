@@ -104,9 +104,7 @@ public class IntakeSubsystem extends SubsystemBase {
     }
 
     public Command getPivotDown() {
-        return this.run(() -> {
-            setPivotSpeed(0.3);       
-             }).until(() -> getPivotAngle() >= MIN_ANGLE_DOWN - 5.0).then(() -> {setPivotSpeed(0.0);}); // Stop a little early to avoid hitting the floor hard!
+        return this.run(() -> {setPivotSpeed(0.3);}).until(() -> getPivotAngle() >= MIN_ANGLE_DOWN - 5.0).andThen(() -> {setPivotSpeed(0.0);}); // Stop a little early to avoid hitting the floor hard!
     }
 
     public Command runIntakeandgetPivotDownCommand(){
