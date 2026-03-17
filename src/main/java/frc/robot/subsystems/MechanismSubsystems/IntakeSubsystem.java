@@ -32,7 +32,8 @@ public class IntakeSubsystem extends SubsystemBase {
     @SuppressWarnings("removal")
     // Constructor initializes motors and encoder, and configures motor settings like current limits and idle modes.
     public IntakeSubsystem() {
-        frontRollerMotor = new SparkMax(15, MotorType.kBrushless);
+        frontRollerMotor = new SparkMax(15
+        , MotorType.kBrushless);
         backBeltMotor = new SparkMax(16, MotorType.kBrushless);
         pivotMotor = new SparkMax(17, MotorType.kBrushless);
 
@@ -99,12 +100,14 @@ public class IntakeSubsystem extends SubsystemBase {
      */
     public Command runIntakeCommand() {
         return this.runOnce(() -> 
-            frontRollerMotor.set(0.9)
+            frontRollerMotor.set(-0.7)
         );
     }
 
     public Command getPivotDown() {
-        return this.run(() -> {setPivotSpeed(0.3);}).until(() -> getPivotAngle() >= MIN_ANGLE_DOWN - 5.0).andThen(() -> {setPivotSpeed(0.0);}); // Stop a little early to avoid hitting the floor hard!
+        return this.run(() -> {
+            pivotMotor.set(-0.2);       
+             }).until(() -> getPivotAngle() >= MIN_ANGLE_DOWN - 5.0).andThen(() -> {pivotMotor.set(0.0);}); // Stop a little early to avoid hitting the floor hard!
     }
 
     public Command runIntakeandgetPivotDownCommand(){
@@ -120,41 +123,21 @@ public class IntakeSubsystem extends SubsystemBase {
      */
     public Command stowIntakeCommand() {
         return this.run(() -> {
-             setPivotSpeed(0.1);  // Drive UP (Positive)
-            frontRollerMotor.set(0.0); // Stop rollers
+            frontRollerMotor.set(0.0);
+             pivotMotor.set(0.2);  // Drive UP (Positive)
+             // Stop rollers
         })
-        .until(() -> getPivotAngle() <= MAX_ANGLE_UP + 1.0); // Stop the command when fully stowed
+        .until(() -> getPivotAngle() <= MAX_ANGLE_UP + 1.0).andThen(() -> {pivotMotor.set(0.0);}); // Stop the command when fully stowed
     }
 
-    /**
-     * Safely drives the pivot up or down, respecting the encoder limits.
-     * @param speed positive for Up, negative for Down
-     */
-    public void setPivotSpeed(double speed) {
-        double currentAngle = getPivotAngle();
-
-        // CHECK 1: Are we trying to go too far Up?
-        // (Assuming positive speed is Up, and smaller angle is Up)
-        if (speed > 0 && currentAngle <= MAX_ANGLE_UP) {
-            speed = 0.0; // Force stop!
-        }
-        
-        // CHECK 2: Are we trying to go too far Down?
-        // (Assuming negative speed is Down, and larger angle is Down)
-        if (speed < 0 && currentAngle >= MIN_ANGLE_DOWN) {
-            speed = 0.0; // Force stop!
-        }
-
-        pivotMotor.set(speed);
-    }
 
     public Command manualPivotCommand(java.util.function.DoubleSupplier joystickAxis) {
         return this.run(() -> {
             double stickValue = joystickAxis.getAsDouble();
             if (Math.abs(stickValue) < 0.1) {
-                setPivotSpeed(0.0);
+                pivotMotor.set(0.0);
             } else {
-                setPivotSpeed(stickValue * 0.4); 
+                pivotMotor.set(stickValue * 0.4); 
             }
         });
     }
