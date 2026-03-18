@@ -103,6 +103,14 @@ public class RobotContainer {
         ).ignoringDisable(true).schedule();
     }
 
+    private final Command fixedTriggerShootStart = Commands.parallel(Commands.run(() -> shooter.runFixedShooter(), shooter), Commands.run(() -> indexer.runForward(), indexer), Commands.run(() -> intake.runIntake(), intake));
+    private final Command fixedTriggerShootEnd = Commands.parallel(Commands.run(() -> shooter.stopFixedShooter(), shooter), Commands.run(() -> indexer.stop(), indexer), Commands.run(() -> intake.stopIntake(), intake));
+
+    private final Command fixedTriggerShootRoutine = Commands.parallel(indexer.feedToShooterCommand(), intake.fixedIntake(), shooter.fixedShooter());
+        //Commands.runEnd(fixedTriggerShootStart, fixedTriggerShootEnd);
+            
+        
+
 private final Command triggerShootRoutine = Commands.sequence(
         Commands.runOnce(() -> visionSwerveSystem.enableTagLock()),
     // STEP 1: Simultaneously spin up the flywheels/hood and aim the turret
@@ -123,13 +131,26 @@ Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shoote
     );
 
     private final Command deployandIntakeCommand = 
-      Commands.run(() -> intake.runIntake(), intake);
+    Commands.sequence(Commands.run(() -> intake.getPivotDown(), intake), Commands.run(() -> intake.runIntake(), intake));
+    
 
       private final Command stopIntakeCommand = 
       Commands.run(() -> intake.stopIntake(), intake);
 
     private void configureBindings() {
+            //SIMPLE FINAL BINDINGS PROBABLY
         driverXbox.leftTrigger().whileTrue(deployandIntakeCommand);
+        driverXbox.rightTrigger().whileTrue(fixedTriggerShootRoutine);
+        
+
+
+
+
+
+
+
+
+        //driverXbox.leftTrigger().whileTrue(deployandIntakeCommand);
         driverXbox.y().onTrue(stopIntakeCommand);
         //driverXbox.y().onTrue(stopShootRoutine);
         
@@ -172,12 +193,12 @@ Command ferrySequence = Commands.sequence(
          driverXbox.rightBumper().whileTrue(turret.turnRightCommand());
          driverXbox.leftBumper().whileTrue(turret.turnLeftCommand());
          driverXbox.b().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
-         driverXbox.rightTrigger().onTrue(triggerShootRoutine);
+         //driverXbox.rightTrigger().whileTrue(triggerShootRoutine);
          driverXbox.a().onTrue(ferrySequence);
          driverXbox.povUp().whileTrue(Commands.run(() -> indexer.reverseIndexerCommand(), indexer));
          driverXbox.povDown().onTrue(Commands.runOnce(() -> intake.stowIntakeCommand(), intake));
-         driverXbox.povLeft().onTrue(Commands.runOnce(() -> shooter.startHoming(), shooter));
-         driverXbox.povRight().onTrue(Commands.runOnce(() -> shooter.stopShooter(), shooter));
+         //driverXbox.povLeft().onTrue(Commands.runOnce(() -> shooter.startHoming(), shooter));
+         //driverXbox.povRight().onTrue(Commands.runOnce(() -> shooter.stopShooter(), shooter));
          
     }
 

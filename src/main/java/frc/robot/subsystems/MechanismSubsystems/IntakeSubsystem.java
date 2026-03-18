@@ -105,6 +105,7 @@ public class IntakeSubsystem extends SubsystemBase {
         return this.runEnd(() -> setPivotSpeed(-0.3), this::stopRollers);
     }
 
+    
     /**
      * A Command that simultaneously drops the intake and runs the rollers to pull in a game piece.
      * Drops the intake to the floor and spins the rollers.
@@ -119,6 +120,10 @@ public class IntakeSubsystem extends SubsystemBase {
      public void stopIntake() {
         // frontRollerMotor.set(-0.7);
         backBeltMotor.set(0.0);
+     }
+
+     public Command fixedIntake() {
+        return this.runEnd(this::runIntake, this::stopIntake);
      }
 
    

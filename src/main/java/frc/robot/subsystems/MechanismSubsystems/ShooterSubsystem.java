@@ -1,5 +1,6 @@
 package frc.robot.subsystems.MechanismSubsystems;
 
+import edu.wpi.first.wpilibj2.command.Command;
 //import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 //import frc.robot.LimelightHelpers;
@@ -86,6 +87,18 @@ public class ShooterSubsystem extends SubsystemBase {
         // Just update the target! periodic() handles the movement.
         currentHoodTarget = hoodMap.get(distanceToHubMeters);
         rightFlywheel.set(targetPower);
+    }
+
+    public void runFixedShooter() {
+        rightFlywheel.set(0.1); //TODO: change this to what works
+    }
+
+    public Command fixedShooter() {
+        return this.runEnd(this::runFixedShooter, this::stopFixedShooter);
+    }
+
+    public void stopFixedShooter() {
+        rightFlywheel.set(0.0);
     }
 
     public void stopShooter() {
