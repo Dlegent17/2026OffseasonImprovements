@@ -17,7 +17,7 @@ public class IntakeSubsystem extends SubsystemBase {
 
     // Motors
     private final SparkMax frontRollerMotor;
-    private final SparkMax backBeltMotor;
+    
     private final SparkMax pivotMotor;
 
     // Absolute Encoder connected to roboRIO DIO
@@ -27,18 +27,20 @@ public class IntakeSubsystem extends SubsystemBase {
     // 0 degrees is theoretical fully stowed (up)
     // 90 degrees is theoretical fully deployed (down to the floor)
     private final double MAX_ANGLE_UP = 235.0;
-    private final double MIN_ANGLE_DOWN = 50.0;
+    private final double MIN_ANGLE_DOWN = 60.0;
 
     @SuppressWarnings("removal")
     // Constructor initializes motors and encoder, and configures motor settings like current limits and idle modes.
     public IntakeSubsystem() {
         frontRollerMotor = new SparkMax(15
         , MotorType.kBrushless);
-        backBeltMotor = new SparkMax(16, MotorType.kBrushless);
+        
         pivotMotor = new SparkMax(17, MotorType.kBrushless);
 
         // Initialize Encoder on roboRIO DIO Port 2
         pivotEncoder = new DutyCycleEncoder(2);
+        
+        
 
         // 
         SparkMaxConfig rollerConfig = new SparkMaxConfig();
@@ -47,11 +49,7 @@ public class IntakeSubsystem extends SubsystemBase {
 
         frontRollerMotor.configure(rollerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-        SparkMaxConfig backBeltConfig = new SparkMaxConfig();
-        backBeltConfig.apply(rollerConfig);
-        backBeltConfig.inverted(true);
-        backBeltMotor.configure(backBeltConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-
+       
         // Configure Pivot Motor with Brake Mode and Current Limit
         SparkMaxConfig pivotConfig = new SparkMaxConfig();
         pivotConfig.smartCurrentLimit(40);
@@ -77,12 +75,12 @@ public class IntakeSubsystem extends SubsystemBase {
 // Set the speed of both the front roller and back belt motors at the same time for convenience.
     public void setRollerSpeed(double speed) {
         frontRollerMotor.set(speed);
-        backBeltMotor.set(speed);
+        
     }
 // A simple helper method to stop all intake motors.
     public void stopRollers() {
-        frontRollerMotor.set(0.0);
-        backBeltMotor.set(0.0);
+        //frontRollerMotor.set(0.0);
+        //backBeltMotor.set(0.0);
     }
 
     public void setFrontRollerSpeed(double speed) {
@@ -112,19 +110,23 @@ public class IntakeSubsystem extends SubsystemBase {
      * The soft limits in setPivotSpeed() will automatically stop the arm when it hits the floor!
      */
 
-     public void runIntake() {
-        // frontRollerMotor.set(-0.7);
-        backBeltMotor.set(-0.2);
+    
+
+     public void runRollers() {
+        frontRollerMotor.set(-1.0);
      }
 
-     public void stopIntake() {
-        // frontRollerMotor.set(-0.7);
-        backBeltMotor.set(0.0);
+     public void stopIntakeRollers() {
+        frontRollerMotor.set(0);
      }
 
-     public Command fixedIntake() {
-        return this.runEnd(this::runIntake, this::stopIntake);
+     public Command fixedRollers() {
+        return this.runEnd(this::runRollers, this::stopIntakeRollers);
      }
+
+     
+
+     
 
    
 
@@ -134,12 +136,7 @@ public class IntakeSubsystem extends SubsystemBase {
              }).until(() -> getPivotAngle() <= MIN_ANGLE_DOWN).andThen(() -> {pivotMotor.set(0.0);}); // Stop a little early to avoid hitting the floor hard!
     }
 
-    public Command runIntakeandgetPivotDown(){
-        return this.run(() -> {
-            getPivotDown();
-            runIntake();
-        });
-    }
+    
 
     
 

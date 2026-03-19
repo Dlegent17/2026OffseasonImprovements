@@ -90,11 +90,19 @@ public class ShooterSubsystem extends SubsystemBase {
     }
 
     public void runFixedShooter() {
-        rightFlywheel.set(0.1); //TODO: change this to what works
+        rightFlywheel.set(0.9); //TODO: change this to what works
+        currentHoodTarget = hoodMinAngle;
+    }
+    public void runPassingShooter() {
+        rightFlywheel.set(0.9); //TODO: change this to what works
+        currentHoodTarget = hoodMaxAngle;
     }
 
     public Command fixedShooter() {
         return this.runEnd(this::runFixedShooter, this::stopFixedShooter);
+    }
+    public Command passingShooter() {
+        return this.runEnd(this::runPassingShooter, this::stopFixedShooter);
     }
 
     public void stopFixedShooter() {
@@ -123,10 +131,12 @@ public class ShooterSubsystem extends SubsystemBase {
         // Manually override the target if needed
         currentHoodTarget = targetAngle;
     }
-
-    public void setFerryMode() {
-        rightFlywheel.set(1.0);
-        currentHoodTarget = (hoodMaxAngle - 10);
+public void setFerryMode(){
+    rightFlywheel.set(1.0);
+    currentHoodTarget = (hoodMaxAngle - 10);
+}
+    public void periodic() {
+        
         // Homing Logic: This runs first to establish the zero point and limits before any PID control takes over.
         if (isHoming && !isHomed) {
             if (!hoodLimitSwitch.get()) {
@@ -182,7 +192,7 @@ public class ShooterSubsystem extends SubsystemBase {
         // Dashboard Logging
         SmartDashboard.putNumber("FW Output", rightFlywheel.get());
         // SmartDashboard.putBoolean("Hood Homed", isHomed);
-        // SmartDashboard.putBoolean("Switch Pressed", hoodLimitSwitch.get());
+        SmartDashboard.putBoolean("Switch Pressed", hoodLimitSwitch.get());
        // SmartDashboard.putNumber("Hood Target", currentHoodTarget);
         // SmartDashboard.putNumber("Hood Current", hoodAbsoluteEncoder.get());
         SmartDashboard.putNumber("rawStartPos", hoodRelativeEncoder.getPosition());

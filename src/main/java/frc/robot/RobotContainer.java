@@ -23,6 +23,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.AutoAimTurretCommand;
 import frc.robot.commands.SnapToTagCommand;
+import frc.robot.subsystems.MechanismSubsystems.FloorSubsystem;
 import frc.robot.subsystems.MechanismSubsystems.IndexerSubsystem;
 import frc.robot.subsystems.MechanismSubsystems.IntakeSubsystem;
 import frc.robot.subsystems.MechanismSubsystems.ShooterSubsystem;
@@ -41,6 +42,7 @@ public class RobotContainer {
     public final ShooterSubsystem shooter = new ShooterSubsystem();
     public final TurretSubsystem turret = new TurretSubsystem();
    public final IntakeSubsystem intake = new IntakeSubsystem();
+   public final FloorSubsystem floor = new FloorSubsystem();
     public final IndexerSubsystem indexer = new IndexerSubsystem();
     private final VisionSwerveSystem visionSwerveSystem = new VisionSwerveSystem(drivebase.getPoseEstimator(), turret);    
     @SuppressWarnings("unused")
@@ -103,10 +105,12 @@ public class RobotContainer {
         ).ignoringDisable(true).schedule();
     }
 
-    private final Command fixedTriggerShootStart = Commands.parallel(Commands.run(() -> shooter.runFixedShooter(), shooter), Commands.run(() -> indexer.runForward(), indexer), Commands.run(() -> intake.runIntake(), intake));
-    private final Command fixedTriggerShootEnd = Commands.parallel(Commands.run(() -> shooter.stopFixedShooter(), shooter), Commands.run(() -> indexer.stop(), indexer), Commands.run(() -> intake.stopIntake(), intake));
+    //private final Command fixedTriggerShootStart = Commands.parallel(Commands.run(() -> shooter.runFixedShooter(), shooter), Commands.run(() -> indexer.runForward(), indexer), Commands.run(() -> intake.runIntake(), intake));
+    //private final Command fixedTriggerShootEnd = Commands.parallel(Commands.run(() -> shooter.stopFixedShooter(), shooter), Commands.run(() -> indexer.stop(), indexer), Commands.run(() -> intake.stopIntake(), intake));
 
-    private final Command fixedTriggerShootRoutine = Commands.parallel(indexer.feedToShooterCommand(), intake.fixedIntake(), shooter.fixedShooter());
+    private final Command fixedTriggerShootRoutine = Commands.parallel(indexer.feedToShooterCommand(), floor.fixedIntake(), shooter.fixedShooter());
+    private final Command passingTriggerShootRoutine = Commands.parallel(indexer.feedToShooterCommand(), floor.fixedIntake(), shooter.passingShooter());
+
         //Commands.runEnd(fixedTriggerShootStart, fixedTriggerShootEnd);
             
         
@@ -131,11 +135,11 @@ Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shoote
     );
 
     private final Command deployandIntakeCommand = 
-    Commands.sequence(Commands.run(() -> intake.getPivotDown(), intake), Commands.run(() -> intake.runIntake(), intake));
+    Commands.sequence(intake.getPivotDown(), intake.fixedRollers());
     
 
-      private final Command stopIntakeCommand = 
-      Commands.run(() -> intake.stopIntake(), intake);
+      //private final Command stopIntakeCommand = 
+      //Commands.run(() -> intake.stopIntake(), intake);
 
     private void configureBindings() {
             //SIMPLE FINAL BINDINGS PROBABLY
@@ -151,7 +155,7 @@ Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shoote
 
 
         //driverXbox.leftTrigger().whileTrue(deployandIntakeCommand);
-        driverXbox.y().onTrue(stopIntakeCommand);
+        driverXbox.y().onTrue(stopShootRoutine);
         //driverXbox.y().onTrue(stopShootRoutine);
         
         // Default drive command with vision updates included
@@ -194,7 +198,7 @@ Command ferrySequence = Commands.sequence(
          driverXbox.leftBumper().whileTrue(turret.turnLeftCommand());
          driverXbox.b().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
          //driverXbox.rightTrigger().whileTrue(triggerShootRoutine);
-         driverXbox.a().onTrue(ferrySequence);
+         driverXbox.a().whileTrue(passingTriggerShootRoutine);
          driverXbox.povUp().whileTrue(Commands.run(() -> indexer.reverseIndexerCommand(), indexer));
          driverXbox.povDown().onTrue(Commands.runOnce(() -> intake.stowIntakeCommand(), intake));
          //driverXbox.povLeft().onTrue(Commands.runOnce(() -> shooter.startHoming(), shooter));
