@@ -77,6 +77,7 @@ public class RobotContainer {
         NamedCommands.registerCommand("Shoot10Balls", shootMultipleBalls(10));
         NamedCommands.registerCommand("Shoot20Balls", shootMultipleBalls(20));
         NamedCommands.registerCommand("Shoot30Balls", shootMultipleBalls(30));
+        NamedCommands.registerCommand("FixedShooter", fixedTriggerShootRoutine);
 
         // 3. Build the Auto Chooser
         autoChooser = AutoBuilder.buildAutoChooser();
@@ -114,6 +115,10 @@ public class RobotContainer {
         //Commands.runEnd(fixedTriggerShootStart, fixedTriggerShootEnd);
             
         
+    private final Command fixedStopShootRoutine = Commands.parallel(Commands.run(() -> indexer.stop(), indexer), 
+    Commands.run(() -> floor.stopIntake(), floor),
+     Commands.run(() -> shooter.stopShooterAndStartHoming(), shooter), 
+     Commands.run(() -> intake.stopIntakeRollers(), intake));
 
 private final Command triggerShootRoutine = Commands.sequence(
         Commands.runOnce(() -> visionSwerveSystem.enableTagLock()),
@@ -143,8 +148,8 @@ Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shoote
 
     private void configureBindings() {
             //SIMPLE FINAL BINDINGS PROBABLY
-        driverXbox.leftTrigger().whileTrue(deployandIntakeCommand);
-        driverXbox.rightTrigger().whileTrue(fixedTriggerShootRoutine);
+        driverXbox.leftTrigger().onTrue(deployandIntakeCommand);
+        driverXbox.rightTrigger().onTrue(fixedTriggerShootRoutine);
         
 
 
@@ -155,7 +160,7 @@ Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shoote
 
 
         //driverXbox.leftTrigger().whileTrue(deployandIntakeCommand);
-        driverXbox.y().onTrue(stopShootRoutine);
+        driverXbox.y().onTrue(fixedStopShootRoutine);
         //driverXbox.y().onTrue(stopShootRoutine);
         
         // Default drive command with vision updates included
@@ -166,7 +171,7 @@ Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shoote
             ), visionSwerveSystem)));
 
         // Start Button: Smart Zero Gyro & Pose based on Alliance Color
-        driverXbox.start().onTrue(Commands.runOnce(() -> {
+        driverXbox.x().onTrue(Commands.runOnce(() -> {
             var alliance = DriverStation.getAlliance();
             double xPos = (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) ? 12.51 : 4.03;
             double resetAngle = (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) ? 180.0 : 0.0;
@@ -185,24 +190,19 @@ Command ferrySequence = Commands.sequence(
         );
         
 
-         driverXbox.x().onTrue(Commands.runOnce(() -> {
-            Pose2d visionPose = visionSwerveSystem.getForceResetPose();
-            if (visionPose != null) {
-                drivebase.resetOdometry(visionPose);
-                System.out.println("Odometry Reseeded Successfully!");
-            } else {
-                System.out.println("Reseed Failed: No Tags Visible");
-            }
-        })); 
+        //  driverXbox.x().onTrue(Commands.runOnce(() -> {
+        //     Pose2d visionPose = visionSwerveSystem.getForceResetPose();
+        //     if (visionPose != null) {
+        //         drivebase.resetOdometry(visionPose);
+        //         System.out.println("Odometry Reseeded Successfully!");
+        //     } else {
+        //         System.out.println("Reseed Failed: No Tags Visible");
+        //     }
+        // })); 
          driverXbox.rightBumper().whileTrue(turret.turnRightCommand());
          driverXbox.leftBumper().whileTrue(turret.turnLeftCommand());
-         driverXbox.b().whileTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
-         //driverXbox.rightTrigger().whileTrue(triggerShootRoutine);
-         driverXbox.a().whileTrue(passingTriggerShootRoutine);
-         driverXbox.povUp().whileTrue(Commands.run(() -> indexer.reverseIndexerCommand(), indexer));
-         driverXbox.povDown().onTrue(Commands.runOnce(() -> intake.stowIntakeCommand(), intake));
-         //driverXbox.povLeft().onTrue(Commands.runOnce(() -> shooter.startHoming(), shooter));
-         //driverXbox.povRight().onTrue(Commands.runOnce(() -> shooter.stopShooter(), shooter));
+         driverXbox.b().whileTrue(Commands.run(() -> indexer.reverseIndexerCommand(), indexer));
+         driverXbox.a().onTrue(passingTriggerShootRoutine);
          
     }
 

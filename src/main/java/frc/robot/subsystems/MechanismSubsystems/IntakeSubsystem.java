@@ -147,7 +147,7 @@ public class IntakeSubsystem extends SubsystemBase {
     public Command stowIntakeCommand() {
         // Stop rollers and drive the pivot up until the encoder reports the stowed angle, then stop the pivot.
         return this.run(() -> {
-                //frontRollerMotor.set(0.0);
+                frontRollerMotor.set(0.0);
                 pivotMotor.set(0.5);  // Drive UP (Positive)
             })
             .until(() -> getPivotAngle() >= MAX_ANGLE_UP)

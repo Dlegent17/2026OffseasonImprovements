@@ -90,12 +90,12 @@ public class ShooterSubsystem extends SubsystemBase {
     }
 
     public void runFixedShooter() {
-        rightFlywheel.set(0.9); //TODO: change this to what works
+        rightFlywheel.set(1.0); //TODO: change this to what works
         currentHoodTarget = hoodMinAngle;
     }
     public void runPassingShooter() {
-        rightFlywheel.set(0.9); //TODO: change this to what works
-        currentHoodTarget = hoodMaxAngle;
+        rightFlywheel.set(0.75); //TODO: change this to what works
+        currentHoodTarget = hoodMinAngle + 50;
     }
 
     public Command fixedShooter() {
