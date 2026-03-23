@@ -79,21 +79,21 @@ public class ShooterSubsystem extends SubsystemBase {
     }
 
     public void setDynamicShooter(double distanceToHubMeters) {
-        if (!isHomed) return; 
-
-        double targetPower = powerMap.get(distanceToHubMeters);
-        
-        // Just update the target! periodic() handles the movement.
+        if (!isHomed) return;       
         currentHoodTarget = hoodMap.get(distanceToHubMeters);
-        rightFlywheel.set(targetPower);
+        rightFlywheel.set(powerMap.get(distanceToHubMeters));
+		// Add in again if we are using this variable for shuffleboard
+        // double targetPower = powerMap.get(distanceToHubMeters);  
+		//If you need targetpower comment out 2nd command above and add this: 
+		//rightFlywheel.set(targetPower)
     }
 
     public void runFixedShooter() {
-        rightFlywheel.set(1.0); //TODO: change this to what works
+        rightFlywheel.set(1.0); //TODO: Tune This
         currentHoodTarget = hoodMinAngle;
     }
     public void runPassingShooter() {
-        rightFlywheel.set(0.75); //TODO: change this to what works
+        rightFlywheel.set(0.75); //TODO: Tune This
         currentHoodTarget = hoodMinAngle + 50;
     }
 
@@ -117,83 +117,79 @@ public class ShooterSubsystem extends SubsystemBase {
         }
     }
 
-    public void toggleShooter() {
-        if (Math.abs(rightFlywheel.get()) > 0.1) {
-            stopShooter();
-        } else {
-            rightFlywheel.set(0.2); 
-        }
-    }
+    // public void toggleShooter() {
+    //     if (Math.abs(rightFlywheel.get()) > 0.1) {
+    //         stopShooter();
+    //     } else {
+    //         rightFlywheel.set(0.2); 
+    //     }
+    // }
     
     public void setHoodAngle(double targetAngle) {
         if (!isHomed) return; 
-        // Manually override the target if needed
         currentHoodTarget = targetAngle;
     }
-public void setFerryMode(){
-    rightFlywheel.set(1.0);
-    currentHoodTarget = (hoodMaxAngle - 10);
-}
+	//Perodic Logic
+@Override
     public void periodic() {
-        
-        // Homing Logic: This runs first to establish the zero point and limits before any PID control takes over.
         if (isHoming && !isHomed) {
-            if (!hoodLimitSwitch.get()) {
-                hoodMotor.set(-0.2); 
-            } else {
-                hoodMotor.set(0);
-
-                double rawStartPos = hoodRelativeEncoder.getPosition();
-                //hoodRelativeEncoder.setPosition(rawStartPos);
-                hoodMinAngle = Math.round(rawStartPos * 100.0) / 100.0;
-                hoodMaxAngle = hoodMinAngle + 57.57; //Max angle is 57.57 motor rotations above the min angle, which we found through testing. This is how far the hood can actually move up before hitting the physical stop.
-                hoodMap.clear();
-                hoodMap.put(2.3, hoodMinAngle + 0); // Close shot: Just slightly pitched up
-                /hoodMap.put(3.0, hoodMinAngle + 30); // Mid shot: Halfway up the 1.5 range
-                hoodMap.put(5.0, hoodMinAngle + 40); // Far shot: High angle arc
-                
-                // Immediately set the default state to resting at the bottom
-                currentHoodTarget = hoodMinAngle;
-
-                isHomed = true;
-                isHoming = false;
-            }
+            handleHomingSequence();
+        } else if (isHomed && !isHoming) {
+            handleHoodPIDControl();
         }
+        
+        updateTelemetry();
+    }
 
-        // PID Control Logic: This runs after homing is complete to maintain the hood angle and adjust flywheel power based on distance.
-        // This is what actually forces the motor to move to your targett angle and keeps it there, even if the robot is shaking or the battery is low or whatever.
-        if (isHomed && !isHoming) {
-            double currentHoodPosition = hoodRelativeEncoder.getPosition();
-            
-            // If the target is the absolute bottom, gently push until the switch clicks
-            if (currentHoodTarget <= hoodMinAngle + 0.01) {
-                if (!hoodLimitSwitch.get()) {
-                    hoodMotor.set(-0.15); 
-                } else {
-                    hoodMotor.set(0); 
-                }
-            } 
-            // Otherwise, use the PID to dynamically track the target angle
-            else {
-                double safeTarget = MathUtil.clamp(currentHoodTarget, hoodMinAngle, hoodMaxAngle);
-                double hoodMotorPower = hoodPID.calculate(currentHoodPosition, safeTarget);
-                
-                // Safety: Stop if switch is pressed while moving down
-                if (hoodLimitSwitch.get() && hoodMotorPower < 0) {
-                    hoodMotor.set(0);
-                } else {
-                    hoodMotorPower = MathUtil.clamp(hoodMotorPower, -0.3, 0.3); 
-                    hoodMotor.set(hoodMotorPower);
-                }
-            }
+    private void handleHomingSequence() {
+        if (!hoodLimitSwitch.get()) {
+            hoodMotor.set(HOOD_HOMING_SPEED); 
+        } else {
+            hoodMotor.set(0);
+
+            double rawStartPos = hoodRelativeEncoder.getPosition();
+            hoodMinAngle = Math.round(rawStartPos * 100.0) / 100.0;
+            hoodMaxAngle = hoodMinAngle + HOOD_MAX_TRAVEL_ROTATIONS; 
+
+            populateHoodMap();
+            currentHoodTarget = hoodMinAngle;
+
+            isHomed = true;
+            isHoming = false;
         }
+    }
 
-        // Dashboard Logging
+    private void populateHoodMap() {
+        hoodMap.clear();
+        hoodMap.put(2.3, hoodMinAngle + 0);  // Close shot
+        hoodMap.put(3.0, hoodMinAngle + 30); // Mid shot
+        hoodMap.put(5.0, hoodMinAngle + 40); // Far shot
+    }
+
+    private void handleHoodPIDControl() {
+        double currentHoodPosition = hoodRelativeEncoder.getPosition();
+        
+        // Push gently against the bottom limit switch if targeted at min angle
+        if (currentHoodTarget <= hoodMinAngle + 0.01) {
+            hoodMotor.set(!hoodLimitSwitch.get() ? HOOD_BOTTOMING_SPEED : 0.0);
+            return;
+        } 
+        
+        // Otherwise, run normal PID control
+        double safeTarget = MathUtil.clamp(currentHoodTarget, hoodMinAngle, hoodMaxAngle);
+        double hoodMotorPower = hoodPID.calculate(currentHoodPosition, safeTarget);
+        
+        // Safety: Prevent driving down if the limit switch is already pressed
+        if (hoodLimitSwitch.get() && hoodMotorPower < 0) {
+            hoodMotor.set(0);
+        } else {
+            hoodMotor.set(MathUtil.clamp(hoodMotorPower, -0.3, 0.3)); 
+        }
+    }
+
+    private void updateTelemetry() {
         SmartDashboard.putNumber("FW Output", rightFlywheel.get());
-        // SmartDashboard.putBoolean("Hood Homed", isHomed);
         SmartDashboard.putBoolean("Switch Pressed", hoodLimitSwitch.get());
-       // SmartDashboard.putNumber("Hood Target", currentHoodTarget);
-        // SmartDashboard.putNumber("Hood Current", hoodAbsoluteEncoder.get());
         SmartDashboard.putNumber("rawStartPos", hoodRelativeEncoder.getPosition());
     }
 }
