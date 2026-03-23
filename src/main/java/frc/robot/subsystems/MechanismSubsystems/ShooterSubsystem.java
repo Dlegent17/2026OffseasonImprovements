@@ -1,13 +1,11 @@
 package frc.robot.subsystems.MechanismSubsystems;
 
 import edu.wpi.first.wpilibj2.command.Command;
-//import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-//import frc.robot.LimelightHelpers;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.MathUtil;
-//import edu.wpi.first.wpilibj.DutyCycleEncoder;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import com.revrobotics.spark.SparkMax;
@@ -19,16 +17,17 @@ import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkBase.ResetMode;
 
 public class ShooterSubsystem extends SubsystemBase {
-    
-    // Motors for the flywheel and hood. The flywheel is a simple master-follower setup, while the hood has its own motor and encoder for precise control.
-    private final SparkMax rightFlywheel = new SparkMax(18, MotorType.kBrushless);
-    private final SparkMax leftFlywheel = new SparkMax(19, MotorType.kBrushless);
-    private final SparkMax hoodMotor = new SparkMax(20, MotorType.kBrushless); 
+    // Constants
+	private static final int right_flywheel_id = 18
+	private static final int left_flywheel_id = 19
+	private static final int hood_motor_id = 20
+	private static final int hood_limit_switch_port = 1
+    // Hardware For Shooter Subsystem
+    private final SparkMax rightFlywheel = new SparkMax(right_flywheel_id, MotorType.kBrushless);
+    private final SparkMax leftFlywheel = new SparkMax(left_flywheel_id, MotorType.kBrushless);
+    private final SparkMax hoodMotor = new SparkMax(hood_motor_id, MotorType.kBrushless); 
     private final RelativeEncoder hoodRelativeEncoder = hoodMotor.getEncoder();
-
-    // Sensors and control components for the hood. We are using a relative encoder on the motor and a limit switch at the bottom to establish our zero point.
-    //private final DutyCycleEncoder hoodAbsoluteEncoder = new DutyCycleEncoder(0);
-    private final DigitalInput hoodLimitSwitch = new DigitalInput(1); 
+    private final DigitalInput hoodLimitSwitch = new DigitalInput(hood_limit_switch_port); 
     private final PIDController hoodPID = new PIDController(0.1, 0.0, 0.0);
 
     // State Variables for Homing and Dynamic Control
@@ -44,7 +43,16 @@ public class ShooterSubsystem extends SubsystemBase {
     
     @SuppressWarnings("removal")
 	public ShooterSubsystem() {
-        // Hood Configuration: Brake Mode and Current Limit
+		configureMotors();
+		
+		//Initialize Motor Power Map
+        powerMap.put(2.3, 1.0); 
+        powerMap.put(3.0, 0.85); 
+        powerMap.put(5.0, 1.00);
+        
+        startHoming();
+	}
+    private void configureMotors () {
         SparkMaxConfig hoodConfig = new SparkMaxConfig();
         hoodConfig.idleMode(IdleMode.kBrake);
         hoodMotor.configure(hoodConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
@@ -59,24 +67,15 @@ public class ShooterSubsystem extends SubsystemBase {
         leftConfig.follow(rightFlywheel, true); 
         leftFlywheel.configure(leftConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-        // Interpolating Maps: Distance (m) to Power and Hood Angle
-        powerMap.clear();
-        powerMap.put(2.3, 1.0); 
-        // powerMap.put(3.0, 0.85); 
-        // powerMap.put(5.0, 1.00);
-        
-        startHoming();
-    }
-
-    public void stopShooterAndStartHoming() {
-        rightFlywheel.set(0);
-            startHoming();
-                
-    }
-
-    public void startHoming() {
+	}
+	//Commands and Public Methods
+	    public void startHoming() {
         isHoming = true;
         isHomed = false; 
+    }
+    public void stopShooterAndStartHoming() {
+        rightFlywheel.set(0);
+            startHoming();           
     }
 
     public void setDynamicShooter(double distanceToHubMeters) {
@@ -150,8 +149,8 @@ public void setFerryMode(){
                 hoodMaxAngle = hoodMinAngle + 57.57; //Max angle is 57.57 motor rotations above the min angle, which we found through testing. This is how far the hood can actually move up before hitting the physical stop.
                 hoodMap.clear();
                 hoodMap.put(2.3, hoodMinAngle + 0); // Close shot: Just slightly pitched up
-                // hoodMap.put(3.0, hoodMinAngle + 30); // Mid shot: Halfway up the 1.5 range
-                // hoodMap.put(5.0, hoodMinAngle + 40); // Far shot: High angle arc
+                /hoodMap.put(3.0, hoodMinAngle + 30); // Mid shot: Halfway up the 1.5 range
+                hoodMap.put(5.0, hoodMinAngle + 40); // Far shot: High angle arc
                 
                 // Immediately set the default state to resting at the bottom
                 currentHoodTarget = hoodMinAngle;
