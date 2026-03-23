@@ -69,7 +69,6 @@ public class RobotContainer {
 
         // 2. Register Named Commands
         NamedCommands.registerCommand("FeedIndexer", indexer.feedToShooterCommand());
-        NamedCommands.registerCommand("SpinUpShooter", Commands.runOnce(() -> shooter.toggleShooter()));
         NamedCommands.registerCommand("StopShooter", Commands.runOnce(() -> shooter.stopShooter())); 
         NamedCommands.registerCommand("AutoAim", new AutoAimTurretCommand(turret).withTimeout(1.5));
         NamedCommands.registerCommand("AimAndFireSequence", triggerShootRoutine);
@@ -121,7 +120,6 @@ public class RobotContainer {
      Commands.run(() -> intake.stopIntakeRollers(), intake));
 
 private final Command triggerShootRoutine = Commands.sequence(
-        Commands.runOnce(() -> visionSwerveSystem.enableTagLock()),
     // STEP 1: Simultaneously spin up the flywheels/hood and aim the turret
     Commands.parallel(
         Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToHubMeters()), shooter),
@@ -132,7 +130,6 @@ private final Command triggerShootRoutine = Commands.sequence(
     
 );
 private final Command stopShootRoutine = Commands.sequence(
-        Commands.runOnce(() -> visionSwerveSystem.clearTagLock()),
 Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shooter),
         Commands.run(() -> indexer.stop(), indexer),
         Commands.run(() -> intake.stowIntakeCommand(), intake)
@@ -184,7 +181,7 @@ Commands.parallel(Commands.run(() -> shooter.stopShooterAndStartHoming(), shoote
         
 Command ferrySequence = Commands.sequence(
             Commands.parallel(
-                Commands.run(() -> shooter.setFerryMode(), shooter), 
+                // Commands.run(() -> shooter.setFerryMode(), shooter), 
                 new AutoAimTurretCommand(turret), indexer.feedToShooterCommand()
             )
         );
