@@ -141,19 +141,9 @@ public class Robot extends TimedRobot
     // (It will instantly skip if it already homed during Auto)
     m_robotContainer.shooter.startHoming();
 
-    // --- ALLIANCE SMART LIMELIGHT (TELEOP) ---
-    var alliance = DriverStation.getAlliance();
-    if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
         LimelightHelpers.setPipelineIndex("limelight", 0); 
-        
-        double[] redHubIDs = {2.0, 3.0, 4.0, 5.0, 8.0, 9.0, 10.0, 11.0}; 
-        edu.wpi.first.networktables.NetworkTableInstance.getDefault().getTable("limelight").getEntry("fiducial_id_filters_set").setDoubleArray(redHubIDs);
-    } else {
-        LimelightHelpers.setPipelineIndex("limelight", 1); 
-        
-        double[] blueHubIDs = {18.0, 19.0, 20.0, 21.0, 24.0, 25.0, 26.0, 27.0};
-        edu.wpi.first.networktables.NetworkTableInstance.getDefault().getTable("limelight").getEntry("fiducial_id_filters_set").setDoubleArray(blueHubIDs);
-    }
+        double[] LimelightIDs = {1.0, 2.0, 4.0, 5.0, 6.0, 7.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 20.0, 21.0, 22.0, 23.0, 26.0, 28.0, 29.0, 30.0, 31.0, 32.0}; 
+        edu.wpi.first.networktables.NetworkTableInstance.getDefault().getTable("limelight").getEntry("fiducial_id_filters_set").setDoubleArray(LimelightIDs);
   }
 
   @Override
