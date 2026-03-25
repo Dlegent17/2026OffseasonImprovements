@@ -57,6 +57,7 @@ public class SwerveSubsystem extends SubsystemBase
    */
    public SwerveSubsystem(File directory)
   { 
+    SmartDashboard.putData("Field", field2d);
     boolean blueAlliance = false;
     Pose2d startingPose = blueAlliance ? new Pose2d(new Translation2d(Meter.of(1),
                                                                       Meter.of(4)),
@@ -65,7 +66,7 @@ public class SwerveSubsystem extends SubsystemBase
                                                                       Meter.of(4)),
                                                     Rotation2d.fromDegrees(180));
     // Configure the Telemetry before creating the SwerveDrive to avoid unnecessary objects being created.
-    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.HIGH; // Set the verbosity of the telemetry.  This will affect how much data is sent to the dashboard and how often.  Adjust this based on your needs and the performance of your dashboard.
+    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.LOW; // Set the verbosity of the telemetry.  This will affect how much data is sent to the dashboard and how often.  Adjust this based on your needs and the performance of your dashboard.
     try
     {
       swerveDrive = new SwerveParser(directory).createSwerveDrive(Constants.MAX_SPEED, startingPose);
@@ -99,13 +100,11 @@ public class SwerveSubsystem extends SubsystemBase
                                   new Pose2d(new Translation2d(Meter.of(2), Meter.of(0)),
                                              Rotation2d.fromDegrees(0)));
   }
-
   @Override
   public void periodic()
   {
     // Adding field map to the smart dashboard
     field2d.setRobotPose(swerveDrive.getPose());
-    SmartDashboard.putData(field2d);
   }
 
   @Override
