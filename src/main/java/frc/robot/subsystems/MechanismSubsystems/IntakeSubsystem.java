@@ -6,154 +6,117 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
-import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
-import edu.wpi.first.wpilibj.DutyCycleEncoder;
+import com.revrobotics.RelativeEncoder;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-//import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class IntakeSubsystem extends SubsystemBase {
 
     // Motors
     private final SparkMax frontRollerMotor;
-    
     private final SparkMax pivotMotor;
 
     // Absolute Encoder connected to roboRIO DIO
-    private final DutyCycleEncoder pivotEncoder;
+    private final RelativeEncoder pivotEncoder;
 
     // PLACE HOLDER ANGLE LIMITS - These are just guesses for now since we don't have the real robot or encoder values yet.
-    // 0 degrees is theoretical fully stowed (up)
-    // 90 degrees is theoretical fully deployed (down to the floor)
-    private final double MAX_ANGLE_UP = 235.0;
-    private final double MIN_ANGLE_DOWN = 60.0;
+    // 0.0 degrees is theoretical fully stowed (up)
+    // 90.0 degrees is theoretical fully deployed (down to the floor)
+    private final double StowedPosition = 0.0;
+    // TODO: Read the dashboard to find out how many rotations it takes to hit the floor, and set this to that value in degrees.
+    private final double DeployedPostion = 15.0;
 
     @SuppressWarnings("removal")
     // Constructor initializes motors and encoder, and configures motor settings like current limits and idle modes.
     public IntakeSubsystem() {
-        frontRollerMotor = new SparkMax(15
-        , MotorType.kBrushless);
-        
+        frontRollerMotor = new SparkMax(15, MotorType.kBrushless);
         pivotMotor = new SparkMax(17, MotorType.kBrushless);
-
-        // Initialize Encoder on roboRIO DIO Port 2
-        pivotEncoder = new DutyCycleEncoder(2);
+        pivotEncoder = pivotMotor.getEncoder();
         
-        
-
-        // 
+        // Configuring Front Roller Motor
         SparkMaxConfig rollerConfig = new SparkMaxConfig();
         rollerConfig.smartCurrentLimit(30);
         rollerConfig.idleMode(IdleMode.kCoast);
-
         frontRollerMotor.configure(rollerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-       
         // Configure Pivot Motor with Brake Mode and Current Limit
         SparkMaxConfig pivotConfig = new SparkMaxConfig();
         pivotConfig.smartCurrentLimit(40);
         pivotConfig.idleMode(IdleMode.kBrake); 
-        
         pivotMotor.configure(pivotConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     }
 
     @Override
     public void periodic() {
-        // This runs constantly. It puts your exact intake angle on the dashboard 
-        // so you can easily read it and find your real limits later!
-        SmartDashboard.putNumber("Intake Pivot Angle", getPivotAngle());
+        // This runs constantly. It find the turt deployed postion
+        SmartDashboard.putNumber("Intake Pivot Rotations", getPivotPosition());
     }
-    /**
-     * Reads the absolute encoder and converts it to degrees.
-     * DutyCycleEncoders return 0.0 to 1.0 by default, so we multiply by 360.
+/**
+     * Reads the relative encoder. 
+     * By default, this returns the number of motor rotations.
      */
-    public double getPivotAngle() {
-        // NOTE: Depending on how it's mounted, you might need to add an offset here later
-        return pivotEncoder.get() * 360.0;
+    public double getPivotPosition() {
+        return pivotEncoder.getPosition();
     }
-// Set the speed of both the front roller and back belt motors at the same time for convenience.
-    public void setRollerSpeed(double speed) {
+public void setFrontRollerSpeed(double speed) {
         frontRollerMotor.set(speed);
-        
-    }
-// A simple helper method to stop all intake motors.
-    public void stopRollers() {
-        //frontRollerMotor.set(0.0);
-        //backBeltMotor.set(0.0);
     }
 
-    public void setFrontRollerSpeed(double speed) {
-        frontRollerMotor.set(speed);
+    public void stopRollers() {
+        frontRollerMotor.set(0.0);
     }
+
+    public void runRollers() {
+        frontRollerMotor.set(-1.0);
+    }
+
+    public Command fixedRollers() {
+        return this.runEnd(this::runRollers, this::stopRollers);
+    }
+
+    public Command tempIntakeAndFloorCommand() {
+        return this.runEnd(() -> setFrontRollerSpeed(-0.7), this::stopRollers);
+    }
+
+    // --- Pivot Commands ---
 
     public void setPivotSpeed(double speed) {
         pivotMotor.set(speed);
     }
 
-    public Command tempIntakeAndFloorCommand() {
-        return this.runEnd(() -> {setFrontRollerSpeed(-0.7);}, this::stopRollers);
-    }
-
     public Command intakeInCommand() {
-        return this.runEnd(() -> setPivotSpeed(0.3), this::stopRollers);
+        return this.runEnd(() -> setPivotSpeed(0.3), () -> setPivotSpeed(0.0));
     }
 
     public Command intakeOutCommand() {
-        return this.runEnd(() -> setPivotSpeed(-0.3), this::stopRollers);
+        return this.runEnd(() -> setPivotSpeed(-0.3), () -> setPivotSpeed(0.0));
     }
 
-    
     /**
-     * A Command that simultaneously drops the intake and runs the rollers to pull in a game piece.
-     * Drops the intake to the floor and spins the rollers.
-     * The soft limits in setPivotSpeed() will automatically stop the arm when it hits the floor!
+     * Drives the intake down to the floor.
+     * Stops automatically when it hits the DEPLOYED_POSITION.
      */
-
-    
-
-     public void runRollers() {
-        frontRollerMotor.set(-1.0);
-     }
-
-     public void stopIntakeRollers() {
-        frontRollerMotor.set(0);
-     }
-
-     public Command fixedRollers() {
-        return this.runEnd(this::runRollers, this::stopIntakeRollers);
-     }
-
-     
-
-     
-
-   
-
     public Command getPivotDown() {
         return this.run(() -> {
-            pivotMotor.set(-0.5);       
-             }).until(() -> getPivotAngle() <= MIN_ANGLE_DOWN).andThen(() -> {pivotMotor.set(0.0);}); // Stop a little early to avoid hitting the floor hard!
+            pivotMotor.set(0.5); // TODO: Ensure positive moves it DOWN. If not, make this negative.
+        })
+        .until(() -> getPivotPosition() >= DeployedPostion)
+        .andThen(() -> pivotMotor.set(0.0)); 
     }
-
-    
-
-    
 
     /**
-     * Pulls the intake back up into the robot and stops the rollers.
-     * It finishes automatically when the absolute encoder says it has reached the top.
+     * Pulls the intake back up into the robot.
+     * Stops automatically when it reaches the STOWED_POSITION (0.0).
      */
     public Command stowIntakeCommand() {
-        // Stop rollers and drive the pivot up until the encoder reports the stowed angle, then stop the pivot.
         return this.run(() -> {
-                frontRollerMotor.set(0.0);
-                pivotMotor.set(0.5);  // Drive UP (Positive)
-            })
-            .until(() -> getPivotAngle() >= MAX_ANGLE_UP)
-            .andThen(() -> { pivotMotor.set(0.0); });
+            frontRollerMotor.set(0.0);
+            pivotMotor.set(-0.5);  // TODO: Ensure negative moves it UP. If not, make this positive.
+        })
+        .until(() -> getPivotPosition() <= StowedPosition)
+        .andThen(() -> pivotMotor.set(0.0));
     }
-
 
     public Command manualPivotCommand(java.util.function.DoubleSupplier joystickAxis) {
         return this.run(() -> {
