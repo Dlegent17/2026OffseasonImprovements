@@ -18,10 +18,13 @@ import com.revrobotics.spark.SparkBase.ResetMode;
 
 public class ShooterSubsystem extends SubsystemBase {
     // Constants
-	private static final int right_flywheel_id = 18
-	private static final int left_flywheel_id = 19
-	private static final int hood_motor_id = 20
-	private static final int hood_limit_switch_port = 1
+	private static final int right_flywheel_id = 18;
+	private static final int left_flywheel_id = 19;
+	private static final int hood_motor_id = 20;
+	private static final int hood_limit_switch_port = 1;
+	private static final double hood_HOMIMH_SPEED = -0.2; 
+    private static final double HOOD_BOTTOMING_SPEED = -0.05; 
+    private static final double HOOD_MAX_TRAVEL_ROTATIONS = 57.0;
     // Hardware For Shooter Subsystem
     private final SparkMax rightFlywheel = new SparkMax(right_flywheel_id, MotorType.kBrushless);
     private final SparkMax leftFlywheel = new SparkMax(left_flywheel_id, MotorType.kBrushless);
