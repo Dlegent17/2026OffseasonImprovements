@@ -78,17 +78,17 @@ public class RobotContainer {
         configureBindings();
         DriverStation.silenceJoystickConnectionWarning(true);
 
-        autoChooser.setDefaultOption("Do Nothing", Commands.none());
-        autoChooser.addOption("Drive Forward", drivebase.driveForward().withTimeout(1));
     }
-
-
-    private final Command fixedTriggerShootRoutine = Commands.parallel(
-        new SnapToTagCommand(drivebase, visionSwerveSystem),
-        indexer.feedToShooterCommand(), floor.fixedIntake(), shooter.fixedShooter());
-    private final Command passingTriggerShootRoutine = Commands.parallel(indexer.feedToShooterCommand(), floor.fixedIntake(), shooter.passingShooter());
-            
+       
+private final Command fixedTriggerShootRoutine = Commands.sequence(
+    Commands.parallel(
+        Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToHubMeters()), shooter),
+        new SnapToTagCommand(drivebase, visionSwerveSystem), indexer.feedToShooterCommand(), floor.fixedIntake()
+    )
+);
         
+    private final Command passingTriggerShootRoutine = Commands.parallel(indexer.feedToShooterCommand(), floor.fixedIntake(), shooter.passingShooter());
+         
     private final Command fixedStopShootRoutine = Commands.parallel(
         Commands.run(() -> indexer.stop(), indexer), 
         Commands.run(() -> floor.stopIntake(), floor),
