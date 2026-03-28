@@ -93,7 +93,7 @@ private final Command fixedTriggerShootRoutine = Commands.sequence(
         Commands.run(() -> indexer.stop(), indexer), 
         Commands.run(() -> floor.stopIntake(), floor),
         Commands.run(() -> shooter.stopShooterAndStartHoming(), shooter), 
-        Commands.run(() -> intake.stopIntakeRollers(), intake));
+        Commands.run(() -> intake.stopRollers(), intake));
 
 
     
@@ -121,22 +121,27 @@ private final Command fixedTriggerShootRoutine = Commands.sequence(
                 drivebase.getTurnRate()
             ), visionSwerveSystem)));
 
-        driverXbox.b().onTrue(Commands.runOnce(() -> {
-            var alliance = DriverStation.getAlliance();
-            double xPos = (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) ? 12.51 : 4.03;
-            double resetAngle = (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) ? 180.0 : 0.0;
-            
-            drivebase.resetOdometry(new Pose2d(
-                xPos, 4.035, 
-                Rotation2d.fromDegrees(resetAngle)
-            ));
-        }));
+     driverXbox.b().onTrue(Commands.runOnce(() -> {
+    var alliance = DriverStation.getAlliance();
+    
+    double resetAngle = (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) ? 0.0 : 180.0;
+    
+    // Get the robot's CURRENT position so we don't teleport it to the hub!
+    Pose2d currentPose = drivebase.getPose(); // (Use whatever method your swerve uses to get current pose)
+    
+    // Reset the odometry with the CURRENT X/Y, but the NEW zeroed angle
+    drivebase.resetOdometry(new Pose2d(
+        currentPose.getX(), 
+        currentPose.getY(), 
+        Rotation2d.fromDegrees(resetAngle)
+    ));
+}));
         
         
 
         
-         driverXbox.rightBumper().whileTrue(turret.turnRightCommand());
-         driverXbox.leftBumper().whileTrue(turret.turnLeftCommand());
+        //  driverXbox.rightBumper().whileTrue(turret.turnRightCommand());
+        //  driverXbox.leftBumper().whileTrue(turret.turnLeftCommand());
          driverXbox.x().onTrue(Commands.runOnce(() -> {
            Pose2d visionPose = visionSwerveSystem.getForceResetPose();
             if (visionPose != null) {
@@ -146,7 +151,7 @@ private final Command fixedTriggerShootRoutine = Commands.sequence(
                  System.out.println("Reseed Failed: No Tags Visible");
              }
          }));
-         driverXbox.a().onTrue(passingTriggerShootRoutine);
+         driverXbox.a().onTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
          
     }
 
