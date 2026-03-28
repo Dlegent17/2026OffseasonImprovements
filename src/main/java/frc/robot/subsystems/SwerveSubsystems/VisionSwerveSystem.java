@@ -8,6 +8,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -24,40 +25,16 @@ public class VisionSwerveSystem extends SubsystemBase {
     // Get the latest tag ID that Limelight sees
 double currentTid = LimelightHelpers.getFiducialID(limelightName);
 
-// Get the X/Y offsets from Limelight
-double tx = LimelightHelpers.getTX(limelightName);
-double ty = LimelightHelpers.getTY(limelightName);
-
-// Check if Limelight actually sees a target
-boolean tv = LimelightHelpers.getTV(limelightName);
-    private double lockedTagID = -1;
-private boolean hasLock = false;
-
-public void enableTagLock() {
-    lockedTagID = -1;
-    hasLock = false;
-}
-
-public void clearTagLock() {
-    lockedTagID = -1;
-    hasLock = false;
-}
-
-public double getLockedTX() {
-    if (!hasLock) return 0;
-    return LimelightHelpers.getTX(limelightName);
-}
-
-public double getLockedTY() {
-    if (!hasLock) return 0;
-    return LimelightHelpers.getTY(limelightName);
-}
-
     // THE FIX: Roll is set to 0.0 because the Limelight Web UI is handling the 90-degree portrait rotation!
+// THE FIX: We define the portrait roll AND the backwards yaw here in the code.
+// The Web UI offsets will be safely ignored.
 private final Transform3d turretBaseToCamera = new Transform3d(
     new Translation3d(-0.12065, 0.118, 0.4064), 
-    // ROLL MUST BE 0.0 NOW because the Web UI is doing the work!
-    new Rotation3d(Math.toRadians(0.0), Math.toRadians(-10.0), 0.0) 
+    new Rotation3d(
+        Math.toRadians(-90.0),   
+        Math.toRadians(0.0),  // PITCH: Your physical camera tilt
+        Math.toRadians(165.0)   // YAW: 180 degrees because it faces backwards!
+    ) 
 );
 
     public VisionSwerveSystem(SwerveDrivePoseEstimator poseEstimator, TurretSubsystem turret) {
@@ -96,24 +73,6 @@ private final Transform3d turretBaseToCamera = new Transform3d(
         if (isTrustworthy) {
             poseEstimator.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
         }
-        boolean tv = LimelightHelpers.getTV(limelightName);
-double currentTid = LimelightHelpers.getFiducialID(limelightName);
-
-if (!tv) {
-    clearTagLock(); // no target → unlock
-    return;
-}
-
-// Lock logic
-if (!hasLock && currentTid != -1) {
-    lockedTagID = currentTid; // first tag seen → lock it
-    hasLock = true;
-}
-
-// If locked, ignore all other tags
-if (hasLock && currentTid != lockedTagID) {
-    return;
-}
 
 // Now you can safely use getLockedTX() / getLockedTY() for aiming
     }
@@ -148,40 +107,58 @@ if (hasLock && currentTid != lockedTagID) {
     // ==========================================
     // POSE-BASED CHASSIS AIMING (2026 HUB)
     // ==========================================
+// 1. INCREASE P SLIGHTLY, AND ADD D-GAIN. 
+// The D-gain (0.01) acts as a shock absorber. You may need to tune this up to 0.02 or 0.03.
+
+// Hub Coordinates
+private final edu.wpi.first.math.geometry.Translation2d blueHub = new edu.wpi.first.math.geometry.Translation2d(4.03, 4.035); 
+private final edu.wpi.first.math.geometry.Translation2d redHub = new edu.wpi.first.math.geometry.Translation2d(12.51, 4.035);
+
+// INCREASED D-GAIN: This acts as a heavy shock absorber. 
+// If it still jitters, you can safely raise the D to 0.08 or 0.1
+private final PIDController chassisAimPID = new PIDController(0.15, 0.0, 0.1); 
+
+public double getAimingRotationSpeed() {
+    if (!LimelightHelpers.getTV(limelightName)) return 0.0;
+
+    Pose2d robotPose = poseEstimator.getEstimatedPosition();
+    var alliance = edu.wpi.first.wpilibj.DriverStation.getAlliance();
+    Translation2d target = (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) 
+        ? redHub : blueHub;
+
+    double dx = target.getX() - robotPose.getX();
+    double dy = target.getY() - robotPose.getY();
+    double targetAngleRad = Math.atan2(dy, dx);
     
-    private final edu.wpi.first.math.controller.PIDController chassisAimPID = new edu.wpi.first.math.controller.PIDController(0.1, 0.0, 0.0); 
+    chassisAimPID.enableContinuousInput(-Math.PI, Math.PI);
     
-    // THE REAL 2026 HUB X/Y COORDINATES (In Meters)
-    private final edu.wpi.first.math.geometry.Translation2d blueHub = new edu.wpi.first.math.geometry.Translation2d(4.03, 4.035); 
-    private final edu.wpi.first.math.geometry.Translation2d redHub = new edu.wpi.first.math.geometry.Translation2d(12.51, 4.035);
+    // 1. Calculate speed to update the internal error
+    double speed = chassisAimPID.calculate(robotPose.getRotation().getRadians(), targetAngleRad);
+    double currentError = chassisAimPID.getPositionError();
 
-    public double getAimingRotationSpeed() {
-        // SAFETY FIX: If we don't see a tag, don't try to snap!
-        if (!LimelightHelpers.getTV(limelightName)) {
-            return 0.0;
-        }
-
-        edu.wpi.first.math.geometry.Pose2d robotPose = poseEstimator.getEstimatedPosition();
-        
-        var alliance = edu.wpi.first.wpilibj.DriverStation.getAlliance();
-        edu.wpi.first.math.geometry.Translation2d target = (alliance.isPresent() && alliance.get() == edu.wpi.first.wpilibj.DriverStation.Alliance.Red) 
-            ? redHub : blueHub;
-
-        double dx = target.getX() - robotPose.getX();
-        double dy = target.getY() - robotPose.getY();
-        
-        double targetAngleRad = Math.atan2(dy, dx);
-        chassisAimPID.enableContinuousInput(-Math.PI, Math.PI);
-        
-        return chassisAimPID.calculate(robotPose.getRotation().getRadians(), targetAngleRad);
+    // 2. WIDER DEADBAND (~3 Degrees)
+    // If we are inside this window, cut power to 0 immediately.
+    if (Math.abs(currentError) < 0.05) {
+        return 0.0;
     }
 
-    
+    // 3. THE SMART KICK
+    // Only apply the minimum friction kick if we are more than ~8 degrees away.
+    // This prevents the kick from punching the robot completely through the deadband!
+    double minSpeed = 0.08; 
+    if (Math.abs(currentError) > 0.15) {
+        speed += Math.copySign(minSpeed, speed);
+    }
+
+    // 4. Invert and Clamp
+    return Math.max(-1.0, Math.min(1.0, -speed));
+}
 
     public boolean isAligned() {
-        return Math.abs(chassisAimPID.getPositionError()) < 0.035;
-    }
-
+    // Returns true if the robot is within ~3 degrees of the target.
+    // I matched this 0.05 number to the deadband we just added!
+    return Math.abs(chassisAimPID.getPositionError()) < 0.05;
+}
     public double getDistanceToHubMeters() {
         Pose2d robotPose = poseEstimator.getEstimatedPosition();
         var alliance = DriverStation.getAlliance();
