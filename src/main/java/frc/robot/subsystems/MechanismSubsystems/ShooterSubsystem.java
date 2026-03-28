@@ -22,7 +22,7 @@ public class ShooterSubsystem extends SubsystemBase {
 	private static final int left_flywheel_id = 19;
 	private static final int hood_motor_id = 20;
 	private static final int hood_limit_switch_port = 1;
-	private static final double hood_HOMIMH_SPEED = -0.2; 
+	private static final double hood_HOMIMG_SPEED = -0.2; 
     private static final double HOOD_BOTTOMING_SPEED = -0.05; 
     private static final double HOOD_MAX_TRAVEL_ROTATIONS = 57.0;
     // Hardware For Shooter Subsystem
@@ -49,9 +49,9 @@ public class ShooterSubsystem extends SubsystemBase {
 		configureMotors();
 		
 		//Initialize Motor Power Map
-        powerMap.put(2.3, 1.0); 
-        powerMap.put(3.0, 0.85); 
-        powerMap.put(5.0, 1.00);
+        powerMap.put(2.3, 0.8); 
+        powerMap.put(3.0, 0.9); 
+        powerMap.put(5.0, 1.0);
         
         startHoming();
 	}
@@ -146,7 +146,7 @@ public class ShooterSubsystem extends SubsystemBase {
 
     private void handleHomingSequence() {
         if (!hoodLimitSwitch.get()) {
-            hoodMotor.set(HOOD_HOMING_SPEED); 
+            hoodMotor.set(hood_HOMIMG_SPEED); 
         } else {
             hoodMotor.set(0);
 
