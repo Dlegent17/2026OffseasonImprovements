@@ -41,47 +41,66 @@ public class Robot extends TimedRobot
     }
   }
 
-  @Override
-  public void robotPeriodic()
-  {
-    CommandScheduler.getInstance().run();
-    
-    // Get robot's rotational speed
-    double omegaRps = m_robotContainer.getDrivebase().getSwerveDrive().getFieldVelocity().omegaRadiansPerSecond;
+// Add this at the top of your Robot class
+private int visionLoopCounter = 0;
 
-    // Get Limelight data
-    var llMeasurement = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight");
+@Override
+public void robotPeriodic()
+{
+  // Always run scheduler
+  CommandScheduler.getInstance().run();
 
-    // Initial check: Do we have data, and is the robot stable enough (not spinning wildly)?
-    if (llMeasurement != null && llMeasurement.tagCount > 0 && Math.abs(omegaRps) < 2.0) {
-        
-        // 1. Get the average distance to the tags we currently see
-        double averageTagDistance = llMeasurement.avgTagDist;
+  // Increment loop counter
+  visionLoopCounter++;
 
-        // 2. Determine if we should trust this measurement
-        boolean isTrustworthy = false;
+  // Only process Limelight every 3 loops (~60ms)
+  if (visionLoopCounter % 3 != 0) {
+    return;
+  }
 
-        if (llMeasurement.tagCount >= 2) {
-            // MULTI-TAG: Very accurate. We can trust this from far away.
-            if (averageTagDistance < 4.5) {
-                isTrustworthy = true;
-            }
-        } else if (llMeasurement.tagCount == 1) {
-            // SINGLE-TAG: Prone to noise. Only trust it when we are close.
-            if (averageTagDistance < 2.5) {
-                isTrustworthy = true;
-            }
-        }
+  // (Optional) Prevent overflow over long matches
+  if (visionLoopCounter > 1000) {
+    visionLoopCounter = 0;
+  }
 
-        // 3. If the data passes our checks, fuse it into the SwerveDrive!
-        if (isTrustworthy) {
-            m_robotContainer.getDrivebase().addVisionMeasurement(
-                llMeasurement.pose, 
-                llMeasurement.timestampSeconds
-            );
-        }
+  // Get robot rotational velocity
+  double omegaRps = m_robotContainer.getDrivebase()
+      .getSwerveDrive()
+      .getFieldVelocity()
+      .omegaRadiansPerSecond;
+
+  // Get Limelight pose estimate
+  var llMeasurement = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight");
+
+  // Validate measurement + reject if spinning too fast
+  if (llMeasurement != null && llMeasurement.tagCount > 0 && Math.abs(omegaRps) < 2.0) {
+
+    double averageTagDistance = llMeasurement.avgTagDist;
+
+    boolean isTrustworthy = false;
+
+    // Multi-tag = more reliable
+    if (llMeasurement.tagCount >= 2) {
+      if (averageTagDistance < 4.5) {
+        isTrustworthy = true;
+      }
+    }
+    // Single-tag = only trust when close
+    else if (llMeasurement.tagCount == 1) {
+      if (averageTagDistance < 2.5) {
+        isTrustworthy = true;
+      }
+    }
+
+    // Fuse vision into pose estimator
+    if (isTrustworthy) {
+      m_robotContainer.getDrivebase().addVisionMeasurement(
+          llMeasurement.pose,
+          llMeasurement.timestampSeconds
+      );
     }
   }
+}
 
   
   @Override
@@ -112,20 +131,9 @@ public class Robot extends TimedRobot
     // --- NEW: Trigger the homing routine safely! ---
     m_robotContainer.shooter.startHoming();
     
-    // --- ALLIANCE SMART LIMELIGHT (AUTO) ---
-    var alliance = DriverStation.getAlliance();
-    if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
-        LimelightHelpers.setPipelineIndex("limelight", 0); 
-        
-        // Direct NetworkTable Override (Bypasses old LimelightHelpers)
-        double[] redHubIDs = {2.0, 3.0, 4.0, 5.0, 8.0, 9.0, 10.0, 11.0}; 
-        edu.wpi.first.networktables.NetworkTableInstance.getDefault().getTable("limelight").getEntry("fiducial_id_filters_set").setDoubleArray(redHubIDs);
-    } else {
-        LimelightHelpers.setPipelineIndex("limelight", 1); 
-        
-        double[] blueHubIDs = {18.0, 19.0, 20.0, 21.0, 24.0, 25.0, 26.0, 27.0};
-        edu.wpi.first.networktables.NetworkTableInstance.getDefault().getTable("limelight").getEntry("fiducial_id_filters_set").setDoubleArray(blueHubIDs);
-    }
+    LimelightHelpers.setPipelineIndex("limelight", 0); 
+        double[] LimelightIDs = {1.0, 2.0, 4.0, 5.0, 6.0, 7.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 20.0, 21.0, 22.0, 23.0, 26.0, 28.0, 29.0, 30.0, 31.0, 32.0}; 
+        edu.wpi.first.networktables.NetworkTableInstance.getDefault().getTable("limelight").getEntry("fiducial_id_filters_set").setDoubleArray(LimelightIDs);
 
     if (m_autonomousCommand != null) { m_autonomousCommand.schedule(); }
   }
