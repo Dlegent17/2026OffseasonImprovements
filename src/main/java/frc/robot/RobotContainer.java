@@ -83,7 +83,7 @@ public class RobotContainer {
 private final Command fixedTriggerShootRoutine = Commands.sequence(
     Commands.parallel(
         Commands.run(() -> shooter.setDynamicShooter(visionSwerveSystem.getDistanceToHubMeters()), shooter),
-        new SnapToTagCommand(drivebase, visionSwerveSystem), indexer.feedToShooterCommand(), floor.fixedIntake()
+        new SnapToTagCommand(drivebase, visionSwerveSystem).withTimeout(1.5), indexer.feedToShooterCommand(), floor.fixedIntake()
     )
 );
         
@@ -151,7 +151,7 @@ private final Command fixedTriggerShootRoutine = Commands.sequence(
                  System.out.println("Reseed Failed: No Tags Visible");
              }
          }));
-         driverXbox.a().onTrue(new SnapToTagCommand(drivebase, visionSwerveSystem));
+         driverXbox.a().onTrue(new SnapToTagCommand(drivebase, visionSwerveSystem).withTimeout(1.5));
          
     }
 
