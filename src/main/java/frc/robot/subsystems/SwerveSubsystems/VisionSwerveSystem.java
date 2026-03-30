@@ -114,37 +114,44 @@ private final Transform3d turretBaseToCamera = new Transform3d(
 private final edu.wpi.first.math.geometry.Translation2d blueHub = new edu.wpi.first.math.geometry.Translation2d(4.03, 4.035); 
 private final edu.wpi.first.math.geometry.Translation2d redHub = new edu.wpi.first.math.geometry.Translation2d(12.51, 4.035);
 
+// INCREASED D-GAIN: This acts as a heavy shock absorber. 
+// If it still jitters, you can safely raise the D to 0.08 or 0.1
+private final PIDController chassisAimPID = new PIDController(0.15, 0.0, 0.1); 
+
 public double getAimingRotationSpeed() {
-    // 1. Get robot pose
+    if (!LimelightHelpers.getTV(limelightName)) return 0.0;
+
     Pose2d robotPose = poseEstimator.getEstimatedPosition();
-
-    // 2. Pick correct target (hub)
-    var alliance = DriverStation.getAlliance();
+    var alliance = edu.wpi.first.wpilibj.DriverStation.getAlliance();
     Translation2d target = (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) 
-        ? redHub 
-        : blueHub;
+        ? redHub : blueHub;
 
-    // 3. Compute angle to target
     double dx = target.getX() - robotPose.getX();
     double dy = target.getY() - robotPose.getY();
-    double targetAngle = Math.atan2(dy, dx);
+    double targetAngleRad = Math.atan2(dy, dx);
+    
+    chassisAimPID.enableContinuousInput(-Math.PI, Math.PI);
+    
+    // 1. Calculate speed to update the internal error
+    double speed = chassisAimPID.calculate(robotPose.getRotation().getRadians(), targetAngleRad);
+    double currentError = chassisAimPID.getPositionError();
 
-    double currentAngle = robotPose.getRotation().getRadians();
-
-    // 4. PID calculation
-    double output = chassisAimPID.calculate(currentAngle, targetAngle);
-
-    // 5. If we're aligned, stop completely
-    if (chassisAimPID.atSetpoint()) {
+    // 2. WIDER DEADBAND (~3 Degrees)
+    // If we are inside this window, cut power to 0 immediately.
+    if (Math.abs(currentError) < 0.15) {
         return 0.0;
     }
 
-    // 6. Clamp to safe rotation speed (prevents overshoot)
-    double clamped = Math.max(-0.5, Math.min(0.5, output));
+    // 3. THE SMART KICK
+    // Only apply the minimum friction kick if we are more than ~8 degrees away.
+    // This prevents the kick from punching the robot completely through the deadband!
+    // double minSpeed = 0.04; 
+    // if (Math.abs(currentError) > 0.15) {
+    //     speed += Math.copySign(minSpeed, speed);
+    // }
 
-    // 7. Invert for your drivetrain
-    return -clamped;
-}
+    // 4. Invert and Clamp
+    return Math.max(-1.0, Math.min(1.0, -speed));
 }
 
     public boolean isAligned() {
