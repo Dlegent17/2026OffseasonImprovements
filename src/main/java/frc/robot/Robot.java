@@ -6,7 +6,6 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 
@@ -15,9 +14,9 @@ public class Robot extends TimedRobot
 {
   private static Robot instance;
   private Command m_autonomousCommand;
+  private int visionLoopCounter = 0;
 
   private RobotContainer m_robotContainer;
-  private Timer disabledTimer;
 
   public Robot()
   {
@@ -33,37 +32,17 @@ public class Robot extends TimedRobot
   public void robotInit()
   {
     m_robotContainer = new RobotContainer();
-    disabledTimer = new Timer();
-    System.out.println("XXXX");
     if (isSimulation())
     {
       DriverStation.silenceJoystickConnectionWarning(true);
     }
   }
 
-// Add this at the top of your Robot class
-private int visionLoopCounter = 0;
 
 @Override
 public void robotPeriodic()
 {
-  // Always run scheduler
   CommandScheduler.getInstance().run();
-
-  // Increment loop counter
-  visionLoopCounter++;
-
-  // Only process Limelight every 3 loops (~60ms)
-  if (visionLoopCounter % 3 != 0) {
-    return;
-  }
-
-  // (Optional) Prevent overflow over long matches
-  if (visionLoopCounter > 1000) {
-    visionLoopCounter = 0;
-  }
-
-  // Get robot rotational velocity
   double omegaRps = m_robotContainer.getDrivebase()
       .getSwerveDrive()
       .getFieldVelocity()
@@ -102,24 +81,16 @@ public void robotPeriodic()
   }
 }
 
-  
   @Override
   public void disabledInit()
   {
     m_robotContainer.setMotorBrake(true);
-    disabledTimer.reset();
-    disabledTimer.start();
   }
   
   @Override
   public void disabledPeriodic()
   {
-    if (disabledTimer.hasElapsed(Constants.DrivebaseConstants.WHEEL_LOCK_TIME))
-    {
-      m_robotContainer.setMotorBrake(false);
-      disabledTimer.stop();
-      disabledTimer.reset();
-    }
+    m_robotContainer.setMotorBrake(false);
   }
 
   @Override

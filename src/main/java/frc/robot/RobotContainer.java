@@ -40,8 +40,8 @@ public class RobotContainer {
     public final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve"));
     public final ShooterSubsystem shooter = new ShooterSubsystem();
     public final TurretSubsystem turret = new TurretSubsystem();
-   public final IntakeSubsystem intake = new IntakeSubsystem();
-   public final FloorSubsystem floor = new FloorSubsystem();
+    public final IntakeSubsystem intake = new IntakeSubsystem();
+    public final FloorSubsystem floor = new FloorSubsystem();
     public final IndexerSubsystem indexer = new IndexerSubsystem();
     private final VisionSwerveSystem visionSwerveSystem = new VisionSwerveSystem(drivebase.getPoseEstimator(), turret);    
 	@SuppressWarnings("unused")
@@ -95,23 +95,13 @@ private final Command fixedTriggerShootRoutine = Commands.sequence(
         Commands.run(() -> shooter.stopShooterAndStartHoming(), shooter), 
         Commands.run(() -> intake.stopRollers(), intake));
 
-
-    
-
-
     private final Command deployandIntakeCommand = 
     Commands.sequence(intake.getPivotDown(), intake.fixedRollers());
-
 
     private void configureBindings() {
             //SIMPLE FINAL BINDINGS PROBABLY
         driverXbox.leftTrigger().onTrue(deployandIntakeCommand);
         driverXbox.rightTrigger().onTrue(fixedTriggerShootRoutine);
-        
-
-
-
-
         driverXbox.y().onTrue(fixedStopShootRoutine);
         
         // Default drive command with vision updates included
@@ -136,12 +126,7 @@ private final Command fixedTriggerShootRoutine = Commands.sequence(
         Rotation2d.fromDegrees(resetAngle)
     ));
 }));
-        
-        
 
-        
-        //  driverXbox.rightBumper().whileTrue(turret.turnRightCommand());
-        //  driverXbox.leftBumper().whileTrue(turret.turnLeftCommand());
          driverXbox.x().onTrue(Commands.runOnce(() -> {
            Pose2d visionPose = visionSwerveSystem.getForceResetPose();
             if (visionPose != null) {
@@ -152,9 +137,7 @@ private final Command fixedTriggerShootRoutine = Commands.sequence(
              }
          }));
          driverXbox.a().onTrue(new SnapToTagCommand(drivebase, visionSwerveSystem).withTimeout(1.5));
-         
     }
-
 
     public Command getAutonomousCommand() {
         return autoChooser.getSelected();
