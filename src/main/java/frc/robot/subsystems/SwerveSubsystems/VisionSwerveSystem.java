@@ -33,14 +33,9 @@ private final Transform3d turretBaseToCamera = new Transform3d(
     new Rotation3d(
         Math.toRadians(-90.0),   
         Math.toRadians(0.0),  // PITCH: Your physical camera tilt
-        Math.toRadians(165.0)   // YAW: 180 degrees because it faces backwards!
+        Math.toRadians(-190.0)   // YAW: 180 degrees because it faces backwards!
     ) 
 );
-
-    public VisionSwerveSystem(SwerveDrivePoseEstimator poseEstimator, TurretSubsystem turret) {
-        this.poseEstimator = poseEstimator;
-        this.turret = turret;
-    }
 
     public Transform3d getDynamicRobotToCamera() {
         double currentTurretAngle = turret.getTurretAngleDegrees();
@@ -50,31 +45,6 @@ private final Transform3d turretBaseToCamera = new Transform3d(
         Pose3d cameraPose = turretPose.transformBy(turretBaseToCamera);
         
         return new Transform3d(new Pose3d(), cameraPose);
-    }
-
-    public void updateVision(double currentGyroYawDegrees, double currentGyroRate) {
-        Transform3d dynamicCameraPos = getDynamicRobotToCamera();
-
-        LimelightHelpers.setCameraPose_RobotSpace(
-            limelightName, 
-            dynamicCameraPos.getX(), dynamicCameraPos.getY(), dynamicCameraPos.getZ(), 
-            Math.toDegrees(dynamicCameraPos.getRotation().getX()), 
-            Math.toDegrees(dynamicCameraPos.getRotation().getY()), 
-            Math.toDegrees(dynamicCameraPos.getRotation().getZ())  
-        );
-
-        LimelightHelpers.SetRobotOrientation(limelightName, currentGyroYawDegrees, 0, 0, 0, 0, 0);
-
-        LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
-
-        if (mt2 == null || mt2.tagCount <= 0 || Math.abs(currentGyroRate) > 360.0) return; 
-
-        boolean isTrustworthy = (mt2.tagCount >= 2) || (mt2.tagCount == 1 && mt2.avgTagDist < 3.0);
-        if (isTrustworthy) {
-            poseEstimator.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
-        }
-
-// Now you can safely use getLockedTX() / getLockedTY() for aiming
     }
 
     /**
@@ -116,7 +86,7 @@ private final edu.wpi.first.math.geometry.Translation2d redHub = new edu.wpi.fir
 
 // INCREASED D-GAIN: This acts as a heavy shock absorber. 
 // If it still jitters, you can safely raise the D to 0.08 or 0.1
-private final PIDController chassisAimPID = new PIDController(0.15, 0.0, 0.1); 
+private final PIDController chassisAimPID = new PIDController(0.08, 0.0, 0.05); 
 
 public double getAimingRotationSpeed() {
     if (!LimelightHelpers.getTV(limelightName)) return 0.0;
@@ -138,8 +108,8 @@ public double getAimingRotationSpeed() {
 
     // 2. WIDER DEADBAND (~3 Degrees)
     // If we are inside this window, cut power to 0 immediately.
-    if (Math.abs(currentError) < 0.15) {
-        return 0.0;
+    if (Math.abs(currentError) < 0.1) {
+        return 0.0;//^HERE
     }
 
     // 3. THE SMART KICK
@@ -157,7 +127,7 @@ public double getAimingRotationSpeed() {
     public boolean isAligned() {
     // Returns true if the robot is within ~3 degrees of the target.
     // I matched this 0.05 number to the deadband we just added!
-    return Math.abs(chassisAimPID.getPositionError()) < 0.05;
+    return Math.abs(chassisAimPID.getPositionError()) < 0.1;//HERE
 }
     public double getDistanceToHubMeters() {
         Pose2d robotPose = poseEstimator.getEstimatedPosition();
@@ -167,10 +137,48 @@ public double getAimingRotationSpeed() {
 
         return robotPose.getTranslation().getDistance(target);
     }
+    private final SwerveSubsystem drivebase;
+
+public VisionSwerveSystem(SwerveDrivePoseEstimator poseEstimator, TurretSubsystem turret, SwerveSubsystem drivebase) {
+    this.poseEstimator = poseEstimator;
+    this.turret = turret;
+    this.drivebase = drivebase;
+}
+
+private int visionLoopCounter = 0;
 
 @Override
-    public void periodic() {
-        // Broadcast the live distance to the dashboard so you can write it in your notebook
-        SmartDashboard.putNumber("LIVE Distance (Meters)", getDistanceToHubMeters());
+public void periodic() {
+     visionLoopCounter++;
+
+    // Only process Vision logic every 3 loops (~60ms)
+    if (visionLoopCounter % 4 == 0) {
+    // Always runs regardless of what command is active
+    double currentGyroYawDegrees = drivebase.getHeading().getDegrees();
+    double currentGyroRate = drivebase.getTurnRate();
+
+    Transform3d dynamicCameraPos = getDynamicRobotToCamera();
+
+    LimelightHelpers.setCameraPose_RobotSpace(
+        limelightName,
+        dynamicCameraPos.getX(), dynamicCameraPos.getY(), dynamicCameraPos.getZ(),
+        Math.toDegrees(dynamicCameraPos.getRotation().getX()),
+        Math.toDegrees(dynamicCameraPos.getRotation().getY()),
+        Math.toDegrees(dynamicCameraPos.getRotation().getZ())
+    );
+
+    LimelightHelpers.SetRobotOrientation(limelightName, currentGyroYawDegrees, 0, 0, 0, 0, 0);
+
+    LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
+
+    if (mt2 != null && mt2.tagCount > 0 && Math.abs(currentGyroRate) <= 360.0) {
+        boolean isTrustworthy = (mt2.tagCount >= 2) || (mt2.tagCount == 1 && mt2.avgTagDist < 3.0);
+        if (isTrustworthy) {
+            poseEstimator.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
+        }
     }
+
+    SmartDashboard.putNumber("LIVE Distance (Meters)", getDistanceToHubMeters());
+}
+}
 }
