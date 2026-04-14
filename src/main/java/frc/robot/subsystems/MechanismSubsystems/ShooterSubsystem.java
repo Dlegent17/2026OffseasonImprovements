@@ -16,6 +16,7 @@ import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkBase.ResetMode;
 
+@SuppressWarnings("unused")
 public class ShooterSubsystem extends SubsystemBase {
     // Constants
 	private static final int right_flywheel_id = 18;
@@ -44,17 +45,17 @@ public class ShooterSubsystem extends SubsystemBase {
     private final InterpolatingDoubleTreeMap powerMap = new InterpolatingDoubleTreeMap();
     private final InterpolatingDoubleTreeMap hoodMap = new InterpolatingDoubleTreeMap();
     
-    @SuppressWarnings("removal")
-	public ShooterSubsystem() {
+    public ShooterSubsystem() {
 		configureMotors();
-		
+		powerMap.clear();
 		//Initialize Motor Power Map
-        powerMap.put(2.3, 0.8); 
-        powerMap.put(3.0, 0.9); 
-        powerMap.put(5.0, 1.0);
+        powerMap.put(1.7, 0.7); 
+        powerMap.put(2.25, 0.85); 
+        powerMap.put(3.0, 1.0);
         
         startHoming();
 	}
+    @SuppressWarnings("removal")
     private void configureMotors () {
         SparkMaxConfig hoodConfig = new SparkMaxConfig();
         hoodConfig.idleMode(IdleMode.kBrake);
@@ -78,12 +79,12 @@ public class ShooterSubsystem extends SubsystemBase {
     }
     public void stopShooterAndStartHoming() {
         rightFlywheel.set(0);
-            startHoming();           
+        startHoming();
     }
 
     public void setDynamicShooter(double distanceToHubMeters) {
-        if (!isHomed) return;       
-        currentHoodTarget = hoodMap.get(distanceToHubMeters);
+        // if (!isHomed) return;       
+        // currentHoodTarget = hoodMap.get(distanceToHubMeters);
         rightFlywheel.set(powerMap.get(distanceToHubMeters));
 		// Add in again if we are using this variable for shuffleboard
         // double targetPower = powerMap.get(distanceToHubMeters);  
@@ -92,11 +93,10 @@ public class ShooterSubsystem extends SubsystemBase {
     }
 
     public void runFixedShooter() {
-        rightFlywheel.set(1.0); //TODO: Tune This
-        currentHoodTarget = hoodMinAngle;
+        rightFlywheel.set(1.0);
     }
     public void runPassingShooter() {
-        rightFlywheel.set(0.75); //TODO: Tune This
+        rightFlywheel.set(0.75);
         currentHoodTarget = hoodMinAngle + 50;
     }
 
@@ -165,8 +165,8 @@ public class ShooterSubsystem extends SubsystemBase {
     private void populateHoodMap() {
         hoodMap.clear();
         hoodMap.put(2.3, hoodMinAngle + 0);  // Close shot
-        hoodMap.put(3.0, hoodMinAngle + 30); // Mid shot
-        hoodMap.put(5.0, hoodMinAngle + 40); // Far shot
+        hoodMap.put(3.0, hoodMinAngle + 0); // Mid shot
+        hoodMap.put(5.0, hoodMinAngle + 0); // Far shot
     }
 
     private void handleHoodPIDControl() {
@@ -188,6 +188,25 @@ public class ShooterSubsystem extends SubsystemBase {
         } else {
             hoodMotor.set(MathUtil.clamp(hoodMotorPower, -0.3, 0.3)); 
         }
+    }
+   public void hoodUp() {
+        if (!isHomed) return; // Don't move if we haven't homed!
+        
+        // Increase the target by a small amount (Tune this number!)
+        currentHoodTarget += 0.5; 
+        
+        // Safety: Prevent target from exceeding max travel
+        currentHoodTarget = MathUtil.clamp(currentHoodTarget, hoodMinAngle, hoodMaxAngle);
+    }
+
+    public void hoodDown() {
+        if (!isHomed) return; 
+        
+        // Decrease the target by a small amount (Tune this number!)
+        currentHoodTarget -= 0.5; 
+        
+        // Safety: Prevent target from going below minimum
+        currentHoodTarget = MathUtil.clamp(currentHoodTarget, hoodMinAngle, hoodMaxAngle);
     }
 
     private void updateTelemetry() {
