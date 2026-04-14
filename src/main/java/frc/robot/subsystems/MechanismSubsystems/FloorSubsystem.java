@@ -34,11 +34,11 @@ public class FloorSubsystem extends SubsystemBase {
     // --- Motor Control ---
 
     public void runIntake() {
-        backBeltMotor.set(-0.2);
+        backBeltMotor.set(-1.0);
     }
 
     public void runIntakeReverse() {
-        backBeltMotor.set(0.2);
+        backBeltMotor.set(0.5);
     }
 
     public void stopIntake() {
