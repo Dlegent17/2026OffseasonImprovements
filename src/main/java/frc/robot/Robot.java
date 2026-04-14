@@ -6,6 +6,7 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 
@@ -14,9 +15,9 @@ public class Robot extends TimedRobot
 {
   private static Robot instance;
   private Command m_autonomousCommand;
-  private int visionLoopCounter = 0;
 
   private RobotContainer m_robotContainer;
+  private Timer disabledTimer;
 
   public Robot()
   {
@@ -32,65 +33,88 @@ public class Robot extends TimedRobot
   public void robotInit()
   {
     m_robotContainer = new RobotContainer();
+    disabledTimer = new Timer();
+    System.out.println("XXXX");
     if (isSimulation())
     {
       DriverStation.silenceJoystickConnectionWarning(true);
     }
   }
 
+private int visionLoopCounter = 0;
 
 @Override
-public void robotPeriodic()
-{
-  CommandScheduler.getInstance().run();
-  double omegaRps = m_robotContainer.getDrivebase()
-      .getSwerveDrive()
-      .getFieldVelocity()
-      .omegaRadiansPerSecond;
+public void robotPeriodic() {
+    // ALWAYS run the scheduler every 20ms
+    CommandScheduler.getInstance().run();
 
-  // Get Limelight pose estimate
-  var llMeasurement = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight");
+    visionLoopCounter++;
 
-  // Validate measurement + reject if spinning too fast
-  if (llMeasurement != null && llMeasurement.tagCount > 0 && Math.abs(omegaRps) < 2.0) {
-
-    double averageTagDistance = llMeasurement.avgTagDist;
-
-    boolean isTrustworthy = false;
-
-    // Multi-tag = more reliable
-    if (llMeasurement.tagCount >= 2) {
-      if (averageTagDistance < 4.5) {
-        isTrustworthy = true;
-      }
+    // Only process Vision logic every 3 loops (~60ms)
+    if (visionLoopCounter % 3 == 0) {
+        updateVisionLogic();
     }
-    // Single-tag = only trust when close
-    else if (llMeasurement.tagCount == 1) {
-      if (averageTagDistance < 2.5) {
-        isTrustworthy = true;
-      }
-    }
-
-    // Fuse vision into pose estimator
-    if (isTrustworthy) {
-      m_robotContainer.getDrivebase().addVisionMeasurement(
-          llMeasurement.pose,
-          llMeasurement.timestampSeconds
-      );
-    }
-  }
 }
 
+private void updateVisionLogic() {
+    // 1. Get robot rotational velocity
+    double omegaRps = m_robotContainer.getDrivebase()
+        .getSwerveDrive()
+        .getFieldVelocity()
+        .omegaRadiansPerSecond;
+
+    // 2. Get Limelight pose estimate
+    var llMeasurement = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight");
+
+    // 3. Validate measurement + reject if spinning too fast (> 2.0 rad/s)
+    if (llMeasurement != null && llMeasurement.tagCount > 0 && Math.abs(omegaRps) < 2.0) {
+        
+        double averageTagDistance = llMeasurement.avgTagDist;
+        boolean isTrustworthy = false;
+
+        // Multi-tag = more reliable
+        if (llMeasurement.tagCount >= 2) {
+            if (averageTagDistance < 4.5) {
+                isTrustworthy = true;
+            }
+        }
+        // Single-tag = only trust when close
+        else if (llMeasurement.tagCount == 1) {
+            if (averageTagDistance < 2.5) {
+                isTrustworthy = true;
+            }
+        }
+
+        // 4. Fuse vision into pose estimator
+        if (isTrustworthy) {
+            m_robotContainer.getDrivebase().addVisionMeasurement(
+                llMeasurement.pose,
+                llMeasurement.timestampSeconds
+            );
+        }
+    }
+}
+
+
+
+  
   @Override
   public void disabledInit()
   {
     m_robotContainer.setMotorBrake(true);
+    disabledTimer.reset();
+    disabledTimer.start();
   }
   
   @Override
   public void disabledPeriodic()
   {
-    m_robotContainer.setMotorBrake(false);
+    if (disabledTimer.hasElapsed(Constants.DrivebaseConstants.WHEEL_LOCK_TIME))
+    {
+      m_robotContainer.setMotorBrake(false);
+      disabledTimer.stop();
+      disabledTimer.reset();
+    }
   }
 
   @Override
