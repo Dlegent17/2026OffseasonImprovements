@@ -24,8 +24,7 @@ public class IntakeSubsystem extends SubsystemBase {
     // 0.0 degrees is theoretical fully stowed (up)
     // 90.0 degrees is theoretical fully deployed (down to the floor)
     private final double StowedPosition = 0.0;
-    // TODO: Read the dashboard to find out how many rotations it takes to hit the floor, and set this to that value in degrees.
-    private final double DeployedPostion = 15.0;
+    private final double DeployedPostion = 71.5;
 
     @SuppressWarnings("removal")
     // Constructor initializes motors and encoder, and configures motor settings like current limits and idle modes.
@@ -42,7 +41,7 @@ public class IntakeSubsystem extends SubsystemBase {
 
         // Configure Pivot Motor with Brake Mode and Current Limit
         SparkMaxConfig pivotConfig = new SparkMaxConfig();
-        pivotConfig.smartCurrentLimit(40);
+        pivotConfig.smartCurrentLimit(30);
         pivotConfig.idleMode(IdleMode.kBrake); 
         pivotMotor.configure(pivotConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     }
@@ -99,10 +98,10 @@ public void setFrontRollerSpeed(double speed) {
      */
     public Command getPivotDown() {
         return this.run(() -> {
-            pivotMotor.set(0.5); // TODO: Ensure positive moves it DOWN. If not, make this negative.
+            pivotMotor.set(0.3); 
         })
         .until(() -> getPivotPosition() >= DeployedPostion)
-        .andThen(() -> pivotMotor.set(0.0)); 
+        .andThen(() -> pivotMotor.set(0.0)).andThen(fixedRollers()); 
     }
 
     /**
@@ -112,7 +111,7 @@ public void setFrontRollerSpeed(double speed) {
     public Command stowIntakeCommand() {
         return this.run(() -> {
             frontRollerMotor.set(0.0);
-            pivotMotor.set(-0.5);  // TODO: Ensure negative moves it UP. If not, make this positive.
+            pivotMotor.set(-0.5); 
         })
         .until(() -> getPivotPosition() <= StowedPosition)
         .andThen(() -> pivotMotor.set(0.0));
