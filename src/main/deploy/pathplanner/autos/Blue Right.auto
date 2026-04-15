@@ -7,25 +7,19 @@
         {
           "type": "path",
           "data": {
-            "pathName": "Red Left Normal Path 1"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "Red Left Normal Path 2"
+            "pathName": "Blue Right"
           }
         },
         {
           "type": "named",
           "data": {
-            "name": "Shoot30Balls"
+            "name": "FixedShooter"
           }
         }
       ]
     }
   },
   "resetOdom": true,
-  "folder": "Red Alliance Autos",
+  "folder": null,
   "choreoAuto": false
 }

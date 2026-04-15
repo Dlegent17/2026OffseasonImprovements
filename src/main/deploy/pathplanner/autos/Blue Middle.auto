@@ -5,6 +5,12 @@
     "data": {
       "commands": [
         {
+          "type": "path",
+          "data": {
+            "pathName": "Blue Middle"
+          }
+        },
+        {
           "type": "named",
           "data": {
             "name": "FixedShooter"
@@ -14,6 +20,6 @@
     }
   },
   "resetOdom": true,
-  "folder": "Red Alliance Autos",
+  "folder": null,
   "choreoAuto": false
 }

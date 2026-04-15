@@ -3,25 +3,25 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.254180722891566,
-        "y": 4.035
+        "x": 13.044365192582024,
+        "y": 3.9767760342368046
       },
       "prevControl": null,
       "nextControl": {
-        "x": 3.5784711626729693,
-        "y": 4.184682624593938
+        "x": 14.064293842278524,
+        "y": 4.145612617699328
       },
       "isLocked": false,
       "linkedName": null
     },
     {
       "anchor": {
-        "x": 0.7080240963855422,
-        "y": 0.7239036144578312
+        "x": 14.95928673323823,
+        "y": 4.300242510699002
       },
       "prevControl": {
-        "x": 0.47755716642739693,
-        "y": 0.48131116257692325
+        "x": 14.126642383077485,
+        "y": 4.161245535848024
       },
       "nextControl": null,
       "isLocked": false,
@@ -45,7 +45,7 @@
     "rotation": 0.0
   },
   "reversed": false,
-  "folder": "Blue Alliance Paths",
+  "folder": null,
   "idealStartingState": {
     "velocity": 0,
     "rotation": 0.0
